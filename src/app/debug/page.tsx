@@ -1,3 +1,5 @@
+"use client"
+
 import { RealtimeDebugger } from '@/components/debug/RealtimeDebugger'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -8,7 +10,7 @@ export default function DebugPage() {
       <div className="text-center">
         <h1 className="text-3xl font-bold">FantaMaster Debug</h1>
         <p className="text-muted-foreground mt-2">
-          Strumenti per testing e debugging dell'applicazione
+          Strumenti per testing e debugging dell&apos;applicazione
         </p>
       </div>
 

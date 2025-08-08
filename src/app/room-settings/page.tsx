@@ -1,5 +1,6 @@
 'use client'
 
+import { Suspense } from 'react'
 import { useEffect, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -27,7 +28,8 @@ interface Room {
   participants: Participant[]
 }
 
-export default function RoomSettingsPage() {
+// Componente che usa useSearchParams
+function RoomSettingsContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const roomCode = searchParams.get('code')
@@ -80,7 +82,6 @@ export default function RoomSettingsPage() {
       if (response.ok) {
         setRoom(prev => prev ? { ...prev, code: newName } : null)
         setEditingName(false)
-        // Aggiorna URL se necessario
         router.push(`/room-settings?code=${encodeURIComponent(newName)}`)
       } else {
         alert('Errore aggiornamento nome')
@@ -136,7 +137,7 @@ export default function RoomSettingsPage() {
       <div className="container mx-auto px-4 py-8">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-red-600 mb-4">Codice asta mancante</h1>
-          <p className="text-gray-600 mb-4">Specifica il codice dell'asta nei parametri URL</p>
+          <p className="text-gray-600 mb-4">Specifica il codice dell&apos;asta nei parametri URL</p>
           <Link href="/">
             <Button>Torna alla Homepage</Button>
           </Link>
@@ -150,7 +151,7 @@ export default function RoomSettingsPage() {
       <div className="container mx-auto px-4 py-8">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-red-600 mb-4">Asta non trovata</h1>
-          <p className="text-gray-600 mb-4">L'asta con codice "{roomCode}" non esiste</p>
+          <p className="text-gray-600 mb-4">L&apos;asta con codice &quot;{roomCode}&quot; non esiste</p>
           <Link href="/">
             <Button>Torna alla Homepage</Button>
           </Link>
@@ -186,7 +187,7 @@ export default function RoomSettingsPage() {
             <p className="text-gray-600 mt-2">Gestisci le impostazioni e i link dei partecipanti</p>
           </div>
           <Link href={`/auction/${room.code}`}>
-            <Button variant="outline">Vai all'Asta</Button>
+            <Button variant="outline">Vai all&apos;Asta</Button>
           </Link>
         </div>
 
@@ -265,7 +266,7 @@ export default function RoomSettingsPage() {
               Link Partecipanti ({room.participants.length})
             </CardTitle>
             <CardDescription>
-              Condividi questi link con i partecipanti per permettere loro di accedere all'asta
+              Condividi questi link con i partecipanti per permettere loro di accedere all&apos;asta
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -336,5 +337,26 @@ export default function RoomSettingsPage() {
         </Card>
       </div>
     </div>
+  )
+}
+
+// Componente di fallback per Suspense
+function RoomSettingsLoading() {
+  return (
+    <div className="container mx-auto px-4 py-8">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+        <p className="mt-2 text-gray-600">Caricamento...</p>
+      </div>
+    </div>
+  )
+}
+
+// Componente principale con Suspense
+export default function RoomSettingsPage() {
+  return (
+    <Suspense fallback={<RoomSettingsLoading />}>
+      <RoomSettingsContent />
+    </Suspense>
   )
 }
