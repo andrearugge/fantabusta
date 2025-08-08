@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Progress } from '@/components/ui/progress'
 import { User, DollarSign, Users, Clock, CheckCircle } from 'lucide-react'
 import { Participant, Player } from '@/types'
+import { AuctionTimer } from '../auction/AuctionTimer'
 
 interface ParticipantPortalProps {
   participant: Participant & { rooms: any }
@@ -267,7 +268,7 @@ export default function ParticipantPortal({
         </CardContent>
       </Card>
 
-      {/* Modal asta in corso */}
+      {/* Modal asta in corso - SOSTITUISCI QUESTO BLOCCO */}
       <Dialog open={!!currentAuction && timeRemaining > 0}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -287,10 +288,14 @@ export default function ParticipantPortal({
                 </div>
               </div>
 
-              <div className="text-center">
-                <div className="text-3xl font-bold text-red-600 mb-2">{timeRemaining}s</div>
-                <Progress value={(timeRemaining / 30) * 100} />
-              </div>
+              {/* Sostituisci il timer manuale con AuctionTimer */}
+              <AuctionTimer
+                initialTime={30}
+                isActive={true}
+                onTimeUp={() => setCurrentAuction(null)}
+                roomId={participant.room_id}
+                playerId={currentAuction.player.id}
+              />
 
               {/* Conferma offerta */}
               {bidConfirmation.show && (

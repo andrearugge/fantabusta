@@ -29,16 +29,31 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Cancella eventuali offerte precedenti per questo calciatore
-    // await supabase
-    //   .from('bids')
-    //   .delete()
-    //   .eq('player_id', playerId)
+    // Crea timer nel database
+    const startTime = new Date()
+    const endTime = new Date(Date.now() + 30000) // 30 secondi
+    
+    const { data: timer, error: timerError } = await supabase
+      .from('auction_timers')
+      .insert({
+        room_id: roomId,
+        player_id: playerId,
+        start_time: startTime.toISOString(),
+        end_time: endTime.toISOString(),
+        is_active: true
+      })
+      .select()
+      .single()
 
-    // Calcola timestamp di fine asta (30 secondi da ora)
-    const auctionEndTime = Date.now() + 30000
+    if (timerError) {
+      console.error('Errore creazione timer:', timerError)
+      return NextResponse.json(
+        { error: 'Errore creazione timer' },
+        { status: 500 }
+      )
+    }
 
-    // Invia evento realtime a tutti i partecipanti con timestamp di fine
+    // Invia evento realtime
     await supabase
       .channel('auction_events')
       .send({
@@ -47,15 +62,13 @@ export async function POST(request: NextRequest) {
         payload: {
           player,
           currentTurn,
-          auctionEndTime,
+          timerId: timer.id,
+          auctionEndTime: endTime.getTime(),
           timeRemaining: 30
         }
       })
 
-    // Avvia timer server-side per broadcast periodici
-    startServerTimer(supabase, auctionEndTime, roomId, playerId)
-
-    return NextResponse.json({ success: true })
+    return NextResponse.json({ success: true, timerId: timer.id })
     
   } catch (error) {
     console.error('Errore API start auction:', error)

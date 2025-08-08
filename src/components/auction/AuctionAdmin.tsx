@@ -10,6 +10,7 @@ import { Progress } from '@/components/ui/progress'
 import { Search, Play, SkipForward, Users, Clock, Home, ChevronRight, Settings } from 'lucide-react'
 import { Room, Participant, Player } from '@/types'
 import Link from 'next/link'
+import { AuctionTimer } from './AuctionTimer'
 
 interface AuctionAdminProps {
   room: Room
@@ -193,6 +194,7 @@ export default function AuctionAdmin({
       </div>
 
       {/* Timer e controlli */}
+      // Nel componente AuctionAdmin, sostituisci la sezione timer con:
       {isAuctionActive && selectedPlayer && (
         <Card className="border-2 border-red-500">
           <CardHeader>
@@ -206,10 +208,13 @@ export default function AuctionAdmin({
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <div className="text-center">
-                <div className="text-3xl font-bold text-red-600">{timeRemaining}s</div>
-                <Progress value={(timeRemaining / 30) * 100} className="mt-2" />
-              </div>
+              <AuctionTimer
+                initialTime={30}
+                isActive={isAuctionActive}
+                onTimeUp={handleCloseAuction}
+                roomId={room.id}
+                playerId={selectedPlayer.id}
+              />
               <Button
                 onClick={handleCloseAuction}
                 variant="destructive"

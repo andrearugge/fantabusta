@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { Progress } from '@/components/ui/progress'
 import { createClient } from '@/lib/supabase/client'
 
@@ -17,19 +17,31 @@ export function AuctionTimer({ initialTime, isActive, onTimeUp, roomId, playerId
   const [timerId, setTimerId] = useState<string | null>(null)
   const supabase = createClient()
 
+  // Usa useCallback per evitare dipendenze circolari
+  const handleTimeUp = useCallback(() => {
+    onTimeUp()
+  }, [onTimeUp])
+
   // Sincronizza con database all'avvio
   useEffect(() => {
     if (!isActive || !playerId) return
 
     const syncWithDatabase = async () => {
-      const { data: timer } = await supabase
+      const { data: timers, error } = await supabase
         .from('auction_timers')
         .select('*')
         .eq('room_id', roomId)
         .eq('player_id', playerId)
         .eq('is_active', true)
-        .single()
-
+        .order('created_at', { ascending: false }) // Prendi il più recente
+        .limit(1)
+      
+      if (error) {
+        console.error('❌ Errore recupero timer:', error)
+        return
+      }
+      
+      const timer = timers?.[0] // Prendi il primo risultato
       if (timer) {
         setTimerId(timer.id)
         const now = new Date()
@@ -38,36 +50,40 @@ export function AuctionTimer({ initialTime, isActive, onTimeUp, roomId, playerId
         setTimeRemaining(remaining)
         
         if (remaining <= 0) {
-          onTimeUp()
+          handleTimeUp()
         }
       }
     }
 
     syncWithDatabase()
-  }, [isActive, playerId, roomId])
+  }, [isActive, playerId, roomId, supabase, handleTimeUp])
 
   // Timer locale con sincronizzazione periodica
   useEffect(() => {
     if (!isActive || !timerId) return
 
     const interval = setInterval(async () => {
-      // Verifica stato nel database ogni 5 secondi
-      if (timeRemaining % 5 === 0) {
-        const { data: timer } = await supabase
-          .from('auction_timers')
-          .select('*')
-          .eq('id', timerId)
-          .single()
-
-        if (!timer?.is_active) {
-          setTimeRemaining(0)
-          onTimeUp()
-          return
-        }
-      }
-
       setTimeRemaining(prev => {
         const newTime = prev - 1
+        
+        // Verifica stato nel database ogni 5 secondi
+        if (newTime % 5 === 0 && newTime > 0) {
+          supabase
+            .from('auction_timers')
+            .select('*')
+            .eq('id', timerId)
+            .single()
+            .then(({ data: timer }) => {
+              if (!timer?.is_active) {
+                setTimeRemaining(0)
+                handleTimeUp()
+              }
+            })
+          
+          // RIMUOVI QUESTA CHIAMATA AUTOMATICA - È TROPPO AGGRESSIVA
+          // fetch('/api/auction/check-timers', { method: 'POST' })
+          //   .catch(err => console.error('Errore check-timers:', err))
+        }
         
         // Broadcast timer update
         supabase
@@ -77,17 +93,20 @@ export function AuctionTimer({ initialTime, isActive, onTimeUp, roomId, playerId
             event: 'timer_update',
             payload: { timeRemaining: newTime }
           })
+          .catch(err => console.error('Errore broadcast:', err))
 
         if (newTime <= 0) {
-          onTimeUp()
+          handleTimeUp()
           return 0
         }
         return newTime
       })
     }, 1000)
 
-    return () => clearInterval(interval)
-  }, [isActive, timerId, timeRemaining])
+    return () => {
+      clearInterval(interval)
+    }
+  }, [isActive, timerId, supabase, handleTimeUp])
 
   const progressValue = (timeRemaining / initialTime) * 100
   const isUrgent = timeRemaining <= 10
@@ -108,6 +127,10 @@ export function AuctionTimer({ initialTime, isActive, onTimeUp, roomId, playerId
           isUrgent ? 'bg-red-100' : 'bg-blue-100'
         }`}
       />
+      {/* Debug info - rimuovi in produzione */}
+      <div className="text-xs text-gray-500">
+        TimerId: {timerId || 'Non trovato'}
+      </div>
     </div>
   )
 }
