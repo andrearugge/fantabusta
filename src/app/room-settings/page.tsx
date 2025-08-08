@@ -1,15 +1,16 @@
 'use client'
 
-import { Suspense } from 'react'
-import { useEffect, useState } from 'react'
-import { useSearchParams, useRouter } from 'next/navigation'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Suspense, useState, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
-import { Copy, Check, Settings, Users, Link as LinkIcon, Edit2, Save, X, Home, ChevronRight } from 'lucide-react'
+import { Copy, Check, Users, Settings, Edit2, Save, X, Home, ChevronRight } from 'lucide-react'
 import Link from 'next/link'
+import { getBaseUrl } from '@/lib/utils/url'
 
 interface Participant {
   id: string
@@ -40,6 +41,12 @@ function RoomSettingsContent() {
   const [newName, setNewName] = useState('')
   const [copiedLinks, setCopiedLinks] = useState<Set<string>>(new Set())
   const [updating, setUpdating] = useState(false)
+  const [baseUrl, setBaseUrl] = useState('')
+
+  useEffect(() => {
+    // Imposta l'URL di base quando il componente si monta
+    setBaseUrl(getBaseUrl())
+  }, [])
 
   useEffect(() => {
     if (roomCode) {
@@ -287,7 +294,7 @@ function RoomSettingsContent() {
                       <Label className="text-xs text-gray-500">Link Partecipazione</Label>
                       <div className="flex gap-2">
                         <Input 
-                          value={participant.join_url || `${window.location.origin}/p/${participant.join_token}`}
+                          value={participant.join_url || `${baseUrl}/p/${participant.join_token}`}
                           readOnly 
                           className="font-mono text-sm"
                         />
@@ -295,7 +302,7 @@ function RoomSettingsContent() {
                           size="sm"
                           variant="outline"
                           onClick={() => copyToClipboard(
-                            participant.join_url || `${window.location.origin}/p/${participant.join_token}`,
+                            participant.join_url || `${baseUrl}/p/${participant.join_token}`,
                             participant.id
                           )}
                         >
