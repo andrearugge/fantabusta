@@ -1,0 +1,516 @@
+﻿Nome,Squadra,Ruolo
+Sommer,Inter,P
+Di Gregorio,Juventus,P
+Maignan,Milan,P
+Meret,Napoli,P
+Svilar,Roma,P
+Carnesecchi,Atalanta,P
+De Gea,Fiorentina,P
+Provedel,Lazio,P
+Skorupski,Bologna,P
+Butez,Como,P
+Israel,Torino,P
+Leali,Genoa,P
+Caprile,Cagliari,P
+Suzuki,Parma,P
+Turati,Sassuolo,P
+Falcone,Lecce,P
+Okoye,Udinese,P
+Audero,Cremonese,P
+Montipò,Verona,P
+Milinkovic-Savic V.,Napoli,P
+Sava,Udinese,P
+Ravaglia F.,Bologna,P
+Mandas,Lazio,P
+Scuffet,Pisa,P
+Semper,Pisa,P
+Martinez Jo.,Inter,P
+Rossi F.,Atalanta,P
+Sportiello,Atalanta,P
+Pessina Mas.,Bologna,P
+Ciocci,Cagliari,P
+Radunovic,Cagliari,P
+Vigorito,Como,P
+Nava,Cremonese,P
+Martinelli T.,Fiorentina,P
+Siegrist,Genoa,P
+Sommariva,Genoa,P
+Di Gennaro,Inter,P
+Perin,Juventus,P
+Pinsoglio,Juventus,P
+Furlanetto,Lazio,P
+Fruchtl,Lecce,P
+Samooja,Lecce,P
+Terracciano,Milan,P
+Torriani,Milan,P
+Contini,Napoli,P
+Corvi,Parma,P
+Rinaldi,Parma,P
+Nicolas,Pisa,P
+Zelezny,Roma,P
+Gollini,Roma,P
+Russo A.,Sassuolo,P
+Satalino,Sassuolo,P
+Donnarumma An.,Torino,P
+Paleari,Torino,P
+Popa,Torino,P
+Padelli,Udinese,P
+Perilli,Verona,P
+Vasquez D.,Roma,P
+Nunziante,Udinese,P
+Lezzerini,Fiorentina,P
+Dumfries,Inter,D
+Dimarco,Inter,D
+Gosens,Fiorentina,D
+Zortea,Cagliari,D
+Bastoni,Inter,D
+Cambiaso,Juventus,D
+Angelino,Roma,D
+Di Lorenzo,Napoli,D
+Wesley,Roma,D
+Bellanova,Atalanta,D
+Zappacosta,Atalanta,D
+Bremer,Juventus,D
+Buongiorno,Napoli,D
+Tavares N.,Lazio,D
+Hien,Atalanta,D
+Dodò,Fiorentina,D
+Estupinan,Milan,D
+Rrahmani,Napoli,D
+Mancini,Roma,D
+Solet,Udinese,D
+Martin,Genoa,D
+Carlos Augusto,Inter,D
+Beukema,Napoli,D
+Olivera,Napoli,D
+Valeri,Parma,D
+N'Dicka,Roma,D
+Kossounou,Atalanta,D
+Miranda J.,Bologna,D
+Vasquez,Genoa,D
+Acerbi,Inter,D
+Bisseck,Inter,D
+De Vrij,Inter,D
+Kalulu,Juventus,D
+Gila,Lazio,D
+Djimsiti,Atalanta,D
+Scalvini,Atalanta,D
+Lucumì,Bologna,D
+Vitik,Bologna,D
+Holm,Bologna,D
+De Winter,Genoa,D
+Pavard,Inter,D
+Gatti,Juventus,D
+Joao Mario,Juventus,D
+Romagnoli,Lazio,D
+Marusic,Lazio,D
+Baschirotto,Cremonese,D
+Gaspar K.,Lecce,D
+Tomori,Milan,D
+Delprato,Parma,D
+Coco,Torino,D
+Ismajli,Torino,D
+Biraghi,Torino,D
+Tchatchoua,Verona,D
+Kolasinac,Atalanta,D
+Luperto,Cagliari,D
+Mina,Cagliari,D
+Comuzzo,Fiorentina,D
+Marì,Fiorentina,D
+Ranieri L.,Fiorentina,D
+Kelly L.,Juventus,D
+Pavlovic,Milan,D
+Spinazzola,Napoli,D
+Leoni,Parma,D
+Celik,Roma,D
+Maripan,Torino,D
+Lazaro,Torino,D
+Kamara H.,Udinese,D
+Ahanor,Atalanta,D
+Zappa,Cagliari,D
+Vojvoda,Como,D
+Valle,Como,D
+Gabbia,Milan,D
+Doig,Sassuolo,D
+Bertola,Udinese,D
+Posch,Bologna,D
+Lykogiannis,Bologna,D
+Kempf,Como,D
+Floriani Mussolini,Cremonese,D
+Pezzella Giu.,Cremonese,D
+Pongracic,Fiorentina,D
+Parisi,Fiorentina,D
+Sabelli,Genoa,D
+Cabal,Juventus,D
+Gallo,Lecce,D
+Jimenez A.,Milan,D
+Circati,Parma,D
+Angori,Pisa,D
+Rensch,Roma,D
+Muharemovic,Sassuolo,D
+Walukiewicz,Sassuolo,D
+Kristensen T.,Udinese,D
+Ehizibue,Udinese,D
+Unai Nunez,Verona,D
+Ostigard,Genoa,D
+Casale,Bologna,D
+De Silvestri,Bologna,D
+Obert,Cagliari,D
+Dossena,Como,D
+Goldaniga,Como,D
+Van Der Brempt,Como,D
+Folino,Cremonese,D
+Ceccherini,Cremonese,D
+Viti,Fiorentina,D
+Darmian,Inter,D
+Gigot,Lazio,D
+Patric,Lazio,D
+Lazzari,Lazio,D
+Kouassi,Lecce,D
+Thiaw,Milan,D
+Valenti,Parma,D
+Caracciolo A.,Pisa,D
+Mateus Lusuardi,Pisa,D
+Salah-Eddine,Roma,D
+Romagna,Sassuolo,D
+Pedersen,Torino,D
+Ghilardi,Roma,D
+Valentini N.,Verona,D
+Ebosse,Verona,D
+Ramon,Como,D
+Bradaric,Verona,D
+Ndiaye,Parma,D
+Goglichidze,Udinese,D
+Palestra,Atalanta,D
+Idrissi R.,Cagliari,D
+Moreno Alb.,Como,D
+Bianchetti,Cremonese,D
+Azzi,Cremonese,D
+Barbieri,Cremonese,D
+Fortini,Fiorentina,D
+Marcandalli,Genoa,D
+Vogliacco,Genoa,D
+Norton-Cuffy,Genoa,D
+Rugani,Juventus,D
+Savona,Juventus,D
+Provstgaard,Lazio,D
+Pellegrini Lu.,Lazio,D
+Hysaj,Lazio,D
+Jean,Lecce,D
+Bartesaghi,Milan,D
+Marianucci,Napoli,D
+Juan Jesus,Napoli,D
+Zanoli,Napoli,D
+Mazzocchi,Napoli,D
+Balogh,Parma,D
+Canestrelli,Pisa,D
+Calabresi,Pisa,D
+Hermoso,Roma,D
+Odenthal,Sassuolo,D
+Schuurs,Torino,D
+Masina,Torino,D
+Giannetti L.,Udinese,D
+Kabasele,Udinese,D
+Zemura,Udinese,D
+Rui Modesto,Udinese,D
+Frese,Verona,D
+Bonfanti,Atalanta,D
+Di Pardo,Cagliari,D
+Smolcic I.,Como,D
+Jack,Como,D
+Ravanelli,Cremonese,D
+Otoa,Genoa,D
+Terracciano F.,Milan,D
+Hainaut,Parma,D
+Lovik,Parma,D
+Rus,Pisa,D
+Kumbulla,Roma,D
+Missori,Sassuolo,D
+Pieragnolo,Sassuolo,D
+Slotsager,Verona,D
+Oyegoke,Verona,D
+Denoon,Pisa,D
+Ilic M.,Bologna,D
+Veroli,Cagliari,D
+Sernicola,Cremonese,D
+Rouhi,Juventus,D
+Tiago Gabriel,Lecce,D
+Perez M.,Lecce,D
+Veiga D.,Lecce,D
+Ndaba,Lecce,D
+Coppola F.,Pisa,D
+Mbambi,Pisa,D
+Esteves T.,Pisa,D
+Paz Y.,Sassuolo,D
+Dembelè A.,Torino,D
+Palma,Udinese,D
+Orsolini,Bologna,C
+Pulisic,Milan,C
+Zaccagni,Lazio,C
+McTominay,Napoli,C
+Gudmundsson A.,Fiorentina,C
+Calhanoglu,Inter,C
+De Bruyne,Napoli,C
+Paz N.,Como,C
+Conceicao,Juventus,C
+Odgaard,Bologna,C
+Thuram K.,Juventus,C
+Ederson D.S.,Atalanta,C
+Zambo Anguissa,Napoli,C
+Politano,Napoli,C
+Vlasic,Torino,C
+Mandragora,Fiorentina,C
+Barella,Inter,C
+Frattesi,Inter,C
+Koopmeiners,Juventus,C
+Isaksen,Lazio,C
+Konè M.,Roma,C
+Neres,Napoli,C
+Ondrejka,Parma,C
+De Roon,Atalanta,C
+Samardzic,Atalanta,C
+Caqueret,Como,C
+Da Cunha,Como,C
+Vandeputte,Cremonese,C
+Gronbaek,Genoa,C
+Locatelli,Juventus,C
+Saelemaekers,Milan,C
+Modric,Milan,C
+Sohm,Fiorentina,C
+Tramoni M.,Pisa,C
+Casadei,Torino,C
+Freuler,Bologna,C
+Ferguson,Bologna,C
+Fazzini,Fiorentina,C
+Carboni V.,Genoa,C
+Guendouzi,Lazio,C
+Dele-Bashiru,Lazio,C
+Fofana Y.,Milan,C
+Bernabè,Parma,C
+Man,Parma,C
+Pellegrini Lo.,Roma,C
+Fabbian,Bologna,C
+Vazquez,Cremonese,C
+McKennie,Juventus,C
+Pierotti,Lecce,C
+Ricci S.,Milan,C
+Anjorin,Torino,C
+Ekkelenkamp,Udinese,C
+Pasalic,Atalanta,C
+Maldini,Atalanta,C
+Bernardeschi,Bologna,C
+Folorunsho,Cagliari,C
+Baturina,Como,C
+Frendrup,Genoa,C
+Sucic P.,Inter,C
+Mkhitaryan,Inter,C
+Tete Morente,Lecce,C
+Lobotka,Napoli,C
+Cristante,Roma,C
+El Aynaoui,Roma,C
+Lovric,Udinese,C
+Suslov,Verona,C
+Brescianini,Atalanta,C
+Pobega,Bologna,C
+Gaetano,Cagliari,C
+Perrone,Como,C
+Collocolo,Cremonese,C
+Fagioli,Fiorentina,C
+Messias,Genoa,C
+Malinovskyi,Genoa,C
+Stanciu,Genoa,C
+Rovella,Lazio,C
+Helgason,Lecce,C
+Loftus-Cheek,Milan,C
+El Shaarawy,Roma,C
+Baldanzi,Roma,C
+Thorstvedt,Sassuolo,C
+Valoti,Cremonese,C
+Luis Henrique,Inter,C
+Weah,Juventus,C
+Coulibaly L.,Lecce,C
+Gilmour,Napoli,C
+Hernani,Parma,C
+Pisilli,Roma,C
+Ilic,Torino,C
+Harroui,Verona,C
+Felici,Cagliari,C
+Zalewski,Inter,C
+Vecino,Lazio,C
+Maleh,Lecce,C
+Pierret,Lecce,C
+Ramadani,Lecce,C
+Musah,Milan,C
+Keita M.,Parma,C
+Piccinini G.,Pisa,C
+Tourè I.,Pisa,C
+Marin M.,Pisa,C
+Boloca,Sassuolo,C
+Konè I.,Sassuolo,C
+Fadera,Sassuolo,C
+Karlstrom,Udinese,C
+Atta,Udinese,C
+Piotrowski,Udinese,C
+Adopo,Cagliari,C
+Deiola,Cagliari,C
+Zanimacchia,Cremonese,C
+Masini,Genoa,C
+Ellertsson,Genoa,C
+Thorsby,Genoa,C
+Miretti,Juventus,C
+Cataldi,Lazio,C
+Ordonez C.,Parma,C
+Volpato,Sassuolo,C
+Tameze,Torino,C
+Gineitis,Torino,C
+Serdar,Verona,C
+Mazzitelli,Cagliari,C
+Sulemana I.,Atalanta,C
+Aebischer,Pisa,C
+Sergi Roberto,Como,C
+Grassi,Cremonese,C
+Richardson,Fiorentina,C
+Asllani,Inter,C
+Zielinski,Inter,C
+Kostic,Juventus,C
+Belahyane,Lazio,C
+Chukwueze,Milan,C
+Ghion,Sassuolo,C
+Lipani,Sassuolo,C
+Payero,Udinese,C
+Bernede,Verona,C
+Kastanos,Verona,C
+Moro N.,Bologna,C
+Prati,Cagliari,C
+Castagnetti,Cremonese,C
+Venturino,Genoa,C
+Douglas Luiz,Juventus,C
+Berisha M.,Lecce,C
+Rafia,Lecce,C
+Bondo,Milan,C
+Zerbin,Cremonese,C
+Vural,Pisa,C
+Akinsanmiro,Pisa,C
+Niasse,Verona,C
+Engelhardt,Como,C
+Pickel,Cremonese,C
+Ndour,Fiorentina,C
+Sabiri,Fiorentina,C
+Estevez,Parma,C
+Leris,Pisa,C
+Zarraga,Udinese,C
+Santiago,Verona,C
+Liteta,Cagliari,C
+Braunoder,Como,C
+Alli,Como,C
+Bianco,Fiorentina,C
+Basic,Lazio,C
+Kaba,Lecce,C
+Marchwinski,Lecce,C
+Liberali,Milan,C
+Hojholt,Pisa,C
+Arena,Pisa,C
+Iannoni,Sassuolo,C
+Pafundi,Udinese,C
+Martinez L.,Inter,A
+Kean,Fiorentina,A
+Lukaku,Napoli,A
+Lookman,Atalanta,A
+Thuram,Inter,A
+David,Juventus,A
+Dybala,Roma,A
+Gimenez,Milan,A
+Yildiz,Juventus,A
+Vlahovic,Juventus,A
+Leao,Milan,A
+De Ketelaere,Atalanta,A
+Castellanos,Lazio,A
+Dovbyk,Roma,A
+Berardi,Sassuolo,A
+Dia,Lazio,A
+Krstovic,Lecce,A
+Soulè,Roma,A
+Zapata D.,Torino,A
+Scamacca,Atalanta,A
+Castro S.,Bologna,A
+Immobile,Bologna,A
+Lang,Napoli,A
+Ferguson E.,Roma,A
+Piccoli,Cagliari,A
+Diao,Como,A
+Pinamonti,Sassuolo,A
+Thauvin,Udinese,A
+Dzeko,Fiorentina,A
+Lucca,Napoli,A
+Laurientè,Sassuolo,A
+Kuhn,Como,A
+Adams C.,Torino,A
+Pedro,Lazio,A
+Raspadori,Napoli,A
+Pellegrino M.,Parma,A
+Luvumbo,Cagliari,A
+Colombo,Genoa,A
+Vitinha O.,Genoa,A
+Gonzalez N.,Juventus,A
+Camarda,Lecce,A
+Davis K.,Udinese,A
+Cambiaghi,Bologna,A
+Dallinga,Bologna,A
+Cutrone,Como,A
+Sulemana K.,Atalanta,A
+Dominguez B.,Bologna,A
+Djuric,Parma,A
+Ngonge,Torino,A
+Aboukhlal,Torino,A
+Douvikas,Como,A
+De Luca,Cremonese,A
+Simeone,Napoli,A
+Sarr A.,Verona,A
+Tourè E.,Atalanta,A
+Addai,Como,A
+Johnsen,Cremonese,A
+Beltran L.,Fiorentina,A
+Esposito Se.,Inter,A
+Esposito F.P.,Inter,A
+Noslin,Lazio,A
+Sanabria,Torino,A
+Sanchez,Udinese,A
+Bravo,Udinese,A
+Mosquera,Verona,A
+Kilicsoy,Cagliari,A
+Borrelli,Cagliari,A
+Rodriguez Je.,Como,A
+Okereke,Cremonese,A
+Bonny,Inter,A
+Banda,Lecce,A
+N'Dri,Lecce,A
+Moreo,Pisa,A
+Pierini,Sassuolo,A
+Mulattieri,Sassuolo,A
+Taremi,Inter,A
+Okafor,Milan,A
+Almqvist,Parma,A
+Lind,Pisa,A
+Bayo V.,Udinese,A
+Karlsson,Bologna,A
+Cancellieri,Lazio,A
+Brenner,Udinese,A
+Rocha Livramento,Verona,A
+Ekuban,Genoa,A
+Meister,Pisa,A
+Alvarez A.,Sassuolo,A
+Pavoletti,Cagliari,A
+Azon,Como,A
+Gabrielloni,Como,A
+Bonazzoli,Cremonese,A
+Nasti,Cremonese,A
+Ekhator,Genoa,A
+Milik,Juventus,A
+Benedyczak,Parma,A
+Buffon L.,Pisa,A
+Bonfanti N.,Pisa,A
+Moro L.,Sassuolo,A
+Skjellerup,Sassuolo,A
+Njie,Torino,A
+Pizarro,Udinese,A
+Giovane,Verona,A
