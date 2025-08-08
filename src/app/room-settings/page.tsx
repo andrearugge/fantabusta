@@ -294,7 +294,7 @@ function RoomSettingsContent() {
                       <Label className="text-xs text-gray-500">Link Partecipazione</Label>
                       <div className="flex gap-2">
                         <Input 
-                          value={participant.join_url || `${baseUrl}/p/${participant.join_token}`}
+                          value={`${baseUrl}/p/${participant.join_token}`}
                           readOnly 
                           className="font-mono text-sm"
                         />
@@ -302,7 +302,7 @@ function RoomSettingsContent() {
                           size="sm"
                           variant="outline"
                           onClick={() => copyToClipboard(
-                            participant.join_url || `${baseUrl}/p/${participant.join_token}`,
+                            `${baseUrl}/p/${participant.join_token}`,
                             participant.id
                           )}
                         >
@@ -319,14 +319,17 @@ function RoomSettingsContent() {
                       <Label className="text-xs text-gray-500">Token</Label>
                       <div className="flex gap-2">
                         <Input 
-                          value={participant.join_token}
+                          value={`${baseUrl}/p/${participant.join_token}`}
                           readOnly 
                           className="font-mono text-sm"
                         />
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => copyToClipboard(participant.join_token, `token-${participant.id}`)}
+                          onClick={() => copyToClipboard(
+                            `${baseUrl}/p/${participant.join_token}`,
+                            participant.id
+                          )}
                         >
                           {copiedLinks.has(`token-${participant.id}`) ? (
                             <Check className="h-4 w-4 text-green-600" />

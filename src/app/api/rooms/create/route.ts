@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
         display_name: name,
         budget: budget || 500,
         join_token: token,
-        join_url: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/p/${token}`,
+        join_url: null,
         turn_order: index
       }
     })
