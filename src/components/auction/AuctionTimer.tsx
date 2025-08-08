@@ -9,20 +9,63 @@ interface AuctionTimerProps {
   isActive: boolean
   onTimeUp: () => void
   roomId: string
+  playerId: string
 }
 
-export function AuctionTimer({ initialTime, isActive, onTimeUp, roomId }: AuctionTimerProps) {
+export function AuctionTimer({ initialTime, isActive, onTimeUp, roomId, playerId }: AuctionTimerProps) {
   const [timeRemaining, setTimeRemaining] = useState(initialTime)
+  const [timerId, setTimerId] = useState<string | null>(null)
   const supabase = createClient()
 
+  // Sincronizza con database all'avvio
   useEffect(() => {
-    setTimeRemaining(initialTime)
-  }, [initialTime])
+    if (!isActive || !playerId) return
 
+    const syncWithDatabase = async () => {
+      const { data: timer } = await supabase
+        .from('auction_timers')
+        .select('*')
+        .eq('room_id', roomId)
+        .eq('player_id', playerId)
+        .eq('is_active', true)
+        .single()
+
+      if (timer) {
+        setTimerId(timer.id)
+        const now = new Date()
+        const endTime = new Date(timer.end_time)
+        const remaining = Math.max(0, Math.ceil((endTime.getTime() - now.getTime()) / 1000))
+        setTimeRemaining(remaining)
+        
+        if (remaining <= 0) {
+          onTimeUp()
+        }
+      }
+    }
+
+    syncWithDatabase()
+  }, [isActive, playerId, roomId])
+
+  // Timer locale con sincronizzazione periodica
   useEffect(() => {
-    if (!isActive) return
+    if (!isActive || !timerId) return
 
-    const interval = setInterval(() => {
+    const interval = setInterval(async () => {
+      // Verifica stato nel database ogni 5 secondi
+      if (timeRemaining % 5 === 0) {
+        const { data: timer } = await supabase
+          .from('auction_timers')
+          .select('*')
+          .eq('id', timerId)
+          .single()
+
+        if (!timer?.is_active) {
+          setTimeRemaining(0)
+          onTimeUp()
+          return
+        }
+      }
+
       setTimeRemaining(prev => {
         const newTime = prev - 1
         
@@ -44,7 +87,7 @@ export function AuctionTimer({ initialTime, isActive, onTimeUp, roomId }: Auctio
     }, 1000)
 
     return () => clearInterval(interval)
-  }, [isActive, onTimeUp])
+  }, [isActive, timerId, timeRemaining])
 
   const progressValue = (timeRemaining / initialTime) * 100
   const isUrgent = timeRemaining <= 10

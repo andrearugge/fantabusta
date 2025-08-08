@@ -314,31 +314,6 @@ function RoomSettingsContent() {
                         </Button>
                       </div>
                     </div>
-                    
-                    <div>
-                      <Label className="text-xs text-gray-500">Token</Label>
-                      <div className="flex gap-2">
-                        <Input 
-                          value={`${baseUrl}/p/${participant.join_token}`}
-                          readOnly 
-                          className="font-mono text-sm"
-                        />
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => copyToClipboard(
-                            `${baseUrl}/p/${participant.join_token}`,
-                            participant.id
-                          )}
-                        >
-                          {copiedLinks.has(`token-${participant.id}`) ? (
-                            <Check className="h-4 w-4 text-green-600" />
-                          ) : (
-                            <Copy className="h-4 w-4" />
-                          )}
-                        </Button>
-                      </div>
-                    </div>
                   </div>
                 </div>
               ))}
