@@ -194,7 +194,6 @@ export default function AuctionAdmin({
       </div>
 
       {/* Timer e controlli */}
-      // Nel componente AuctionAdmin, sostituisci la sezione timer con:
       {isAuctionActive && selectedPlayer && (
         <Card className="border-2 border-red-500">
           <CardHeader>
