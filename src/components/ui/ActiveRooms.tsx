@@ -108,17 +108,17 @@ export default function ActiveRooms() {
               
               <div className="flex gap-2">
                 <Link href={`/auction/${room.code}`} className="flex-1">
-                  <Button className="w-full" size="sm">
+                  <Button className="cursor-pointer w-full" size="sm">
                     {room.status === 'active' ? 'Partecipa' : 'Gestisci'}
                   </Button>
                 </Link>
                 <Link href={`/teams/${room.code}`}>
-                  <Button variant="outline" size="sm" className="px-3">
-                    <Trophy className="h-4 w-4" />
+                  <Button variant="outline" size="sm" className="cursor-pointer px-3">
+                    Formazioni
                   </Button>
                 </Link>
                 <Link href={`/room-settings?code=${room.code}`}>
-                  <Button variant="outline" size="sm" className="px-3">
+                  <Button variant="outline" size="sm" className="cursor-pointer px-3">
                     <Settings className="h-4 w-4" />
                   </Button>
                 </Link>

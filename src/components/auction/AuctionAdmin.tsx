@@ -42,11 +42,11 @@ export default function AuctionAdmin({
   const filteredPlayers = availablePlayers.filter(p => {
     // Filtro per nome/squadra
     const matchesSearch = p.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                       p.squadra.toLowerCase().includes(searchTerm.toLowerCase())
-    
+      p.squadra.toLowerCase().includes(searchTerm.toLowerCase())
+
     // Filtro per ruolo
     const matchesRole = selectedRoles.includes(p.ruolo)
-    
+
     // AND tra i due filtri
     return matchesSearch && matchesRole
   })
@@ -57,20 +57,20 @@ export default function AuctionAdmin({
 
   // Funzione per gestire il toggle dei ruoli
   const toggleRole = (role: string) => {
-    setSelectedRoles(prev => 
-      prev.includes(role) 
+    setSelectedRoles(prev =>
+      prev.includes(role)
         ? prev.filter(r => r !== role)
         : [...prev, role]
     )
   }
-  
+
   // Funzione per selezionare/deselezionare tutti i ruoli
   const toggleAllRoles = () => {
-    setSelectedRoles(prev => 
+    setSelectedRoles(prev =>
       prev.length === 4 ? [] : ['P', 'D', 'C', 'A']
     )
   }
-  
+
   // Subscription realtime per aggiornamenti asta
   useEffect(() => {
     const channel = supabase
@@ -295,7 +295,7 @@ export default function AuctionAdmin({
 
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Selezione giocatore */}
-        <div className="lg:col-span-2 space-y-4">
+        <div className="lg:col-span-3 space-y-4">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -312,7 +312,7 @@ export default function AuctionAdmin({
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
-              
+
               {/* Filtri per ruolo */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
@@ -343,7 +343,7 @@ export default function AuctionAdmin({
                   ))}
                 </div>
               </div>
-              
+
               <div className="max-h-96 overflow-y-auto space-y-2">
                 {filteredPlayers.map((player) => (
                   <div
@@ -375,7 +375,7 @@ export default function AuctionAdmin({
         </div>
 
         {/* Squadre */}
-        <div className="space-y-4">
+        <div className="space-y-4 lg:col-span-3">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -393,35 +393,37 @@ export default function AuctionAdmin({
                 <SkipForward className="h-4 w-4 mr-1" />
                 Salta Turno
               </Button>
-              {participants.map((participant, index) => {
-                const stats = getParticipantStats(participant)
-                const isCurrentTurn = index === currentTurn
+              <div className="grid gap-6 lg:grid-cols-4">
+                {participants.map((participant, index) => {
+                  const stats = getParticipantStats(participant)
+                  const isCurrentTurn = index === currentTurn
 
-                return (
-                  <div
-                    key={participant.id}
-                    className={`p-3 border rounded-lg ${isCurrentTurn ? 'border-blue-500 bg-blue-50' : ''
-                      }`}
-                  >
-                    <div className="flex justify-between items-start mb-2">
-                      <p className="font-medium">{participant.display_name}</p>
-                      <Badge variant={isCurrentTurn ? 'default' : 'secondary'}>
-                        {stats.total}/25
-                      </Badge>
-                    </div>
+                  return (
+                    <div
+                      key={participant.id}
+                      className={`p-3 border rounded-lg ${isCurrentTurn ? 'border-blue-500 bg-blue-50' : ''
+                        }`}
+                    >
+                      <div className="flex justify-between items-start mb-2">
+                        <p className="font-medium">{participant.display_name}</p>
+                        <Badge variant={isCurrentTurn ? 'default' : 'secondary'}>
+                          {stats.total}/25
+                        </Badge>
+                      </div>
 
-                    <div className="text-sm text-gray-600 space-y-1">
-                      <p>Budget: {participant.budget}M</p>
-                      <div className="flex gap-2">
-                        <span>P: {stats.P}/3</span>
-                        <span>D: {stats.D}/8</span>
-                        <span>C: {stats.C}/8</span>
-                        <span>A: {stats.A}/6</span>
+                      <div className="text-sm text-gray-600 space-y-1">
+                        <p>Budget: {participant.budget}M</p>
+                        <div className="flex gap-2">
+                          <span>P: {stats.P}/3</span>
+                          <span>D: {stats.D}/8</span>
+                          <span>C: {stats.C}/8</span>
+                          <span>A: {stats.A}/6</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                )
-              })}
+                  )
+                })}
+              </div>
             </CardContent>
           </Card>
         </div>

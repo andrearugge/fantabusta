@@ -24,7 +24,7 @@ export default function DebugPage() {
               Testa le API routes principali
             </p>
             <div className="space-y-2">
-              <Button className="w-full" onClick={() => {
+              <Button className="cursor-pointer w-full" onClick={() => {
                 fetch('/api/rooms/create', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
@@ -36,10 +36,10 @@ export default function DebugPage() {
               }}>
                 Test Create Room
               </Button>
-              <Button className="w-full" variant="outline">
+              <Button className="cursor-pointer w-full" variant="outline">
                 Test Start Auction
               </Button>
-              <Button className="w-full" variant="outline">
+              <Button className="cursor-pointer w-full" variant="outline">
                 Test Place Bid
               </Button>
             </div>
