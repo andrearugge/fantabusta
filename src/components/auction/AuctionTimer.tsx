@@ -19,7 +19,10 @@ export function AuctionTimer({ initialTime, isActive, onTimeUp, roomId, playerId
 
   // Usa useCallback per evitare dipendenze circolari
   const handleTimeUp = useCallback(() => {
-    onTimeUp()
+    // Avvolgi in setTimeout per evitare aggiornamenti durante il rendering
+    setTimeout(() => {
+      onTimeUp()
+    }, 0)
   }, [onTimeUp])
 
   // Sincronizza con database all'avvio
@@ -50,7 +53,9 @@ export function AuctionTimer({ initialTime, isActive, onTimeUp, roomId, playerId
         setTimeRemaining(remaining)
         
         if (remaining <= 0) {
-          handleTimeUp()
+          setTimeout(() => {
+            handleTimeUp()
+          }, 0)
         }
       }
     }
@@ -76,7 +81,9 @@ export function AuctionTimer({ initialTime, isActive, onTimeUp, roomId, playerId
             .then(({ data: timer }) => {
               if (!timer?.is_active) {
                 setTimeRemaining(0)
-                handleTimeUp()
+                setTimeout(() => {
+                  handleTimeUp()
+                }, 0)
               }
             })
           
@@ -96,7 +103,9 @@ export function AuctionTimer({ initialTime, isActive, onTimeUp, roomId, playerId
           .catch(err => console.error('Errore broadcast:', err))
 
         if (newTime <= 0) {
-          handleTimeUp()
+          setTimeout(() => {
+            handleTimeUp()
+          }, 0)
           return 0
         }
         return newTime

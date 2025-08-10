@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -32,7 +32,6 @@ export default function AuctionAdmin({
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null)
   // Aggiungi stato locale per i giocatori
   const [localPlayers, setLocalPlayers] = useState<Player[]>(players)
-  const [localAssignedPlayers, setLocalAssignedPlayers] = useState(assignedPlayers)
 
   const supabase = createClient()
 
@@ -43,7 +42,9 @@ export default function AuctionAdmin({
     p.squadra.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
-  const currentParticipant = participants[currentTurn]
+  const currentParticipant = useMemo(() => {
+    return participants[currentTurn]
+  }, [participants, currentTurn])
 
   // Subscription realtime per aggiornamenti asta
   useEffect(() => {
@@ -51,29 +52,6 @@ export default function AuctionAdmin({
       .channel('auction_events')
       .on('broadcast', { event: 'auction_closed' }, (payload) => {
         const { player, winner, winningBid } = payload.payload
-        
-        if (player && winner) {
-          // Aggiorna lo stato locale dei giocatori
-          setLocalPlayers(prev => 
-            prev.map(p => 
-              p.id === player.id 
-                ? { ...p, is_assigned: true, assigned_to: winner.participant_id }
-                : p
-            )
-          )
-          
-          // Aggiorna la lista dei giocatori assegnati con il valore di acquisto
-          setLocalAssignedPlayers(prev => [
-            {
-              ...player,
-              is_assigned: true,
-              assigned_to: winner.participant_id,
-              participants: { display_name: winner.display_name },
-              purchase_price: winningBid // Aggiungi il valore di acquisto
-            },
-            ...prev
-          ])
-        }
       })
       .subscribe()
 
@@ -82,9 +60,53 @@ export default function AuctionAdmin({
     }
   }, [room.id])
 
+  // Subscription realtime per aggiornamenti asta - UNIFICA TUTTO QUI
+  useEffect(() => {
+    const channel = supabase
+      .channel('auction_events')
+      .on('broadcast', { event: 'timer_update' }, (payload) => {
+        setTimeRemaining(payload.payload.timeRemaining)
+      })
+      .on('broadcast', { event: 'turn_changed' }, (payload) => {
+        setCurrentTurn(payload.payload.newTurn)
+      })
+      .on('broadcast', { event: 'auction_closed' }, (payload) => {
+        const { player, winner, winningBid } = payload.payload
+
+        // Gestisci chiusura asta
+        setIsAuctionActive(false)
+        setSelectedPlayer(null)
+        setTimeRemaining(0)
+      })
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [room.id])
+
+  // RIMUOVI COMPLETAMENTE IL SECONDO useEffect CHE DUPLICA LA LOGICA
+  // useEffect(() => {
+  //   const channel = supabase
+  //     .channel('auction_events')
+  //     .on('broadcast', { event: 'timer_update' }, (payload) => {
+  //       setTimeRemaining(payload.payload.timeRemaining)
+  //     })
+  //     .on('broadcast', { event: 'auction_closed' }, (payload) => {
+  //       // QUESTO DUPLICA LA LOGICA E CAUSA CONFLITTI
+  //     })
+  //     .subscribe()
+  //
+  //   return () => {
+  //     supabase.removeChannel(channel)
+  //   }
+  // }, [])
+
   // Aggiorna la funzione getParticipantStats per usare localAssignedPlayers
+
   const getParticipantStats = (participant: Participant) => {
-    const playersByRole = localAssignedPlayers.filter(p => p.assigned_to === participant.id)
+    // Usa assignedPlayers invece di localAssignedPlayers
+    const playersByRole = assignedPlayers.filter(p => p.assigned_to === participant.id)
     return {
       P: playersByRole.filter(p => p.ruolo === 'P').length,
       D: playersByRole.filter(p => p.ruolo === 'D').length,
@@ -107,24 +129,16 @@ export default function AuctionAdmin({
         setIsAuctionActive(false)
         setSelectedPlayer(null)
         setTimeRemaining(0)
-        
+
         // Aggiorna liste locali
         const { player, winner, winningBid } = payload.payload
-        if (winner) {
-          setLocalAssignedPlayers(prev => [{
-            ...player, 
-            assigned_to: winner.participant_id,
-            purchase_price: winningBid
-          }, ...prev])
-          setLocalPlayers(prev => prev.filter(p => p.id !== player.id))
-        }
       })
       .subscribe()
 
     return () => {
       supabase.removeChannel(channel)
     }
-  }, []) // ← Cambiato da [room.id] a [] per evitare re-subscription
+  }, [])
 
   const startAuction = async (player: Player) => {
     setSelectedPlayer(player)
@@ -155,13 +169,41 @@ export default function AuctionAdmin({
       })
     })
 
-    // Passa al turno successivo
-    setCurrentTurn((currentTurn + 1) % participants.length)
+    // Calcola il nuovo turno
+    const newTurn = (currentTurn + 1) % participants.length
+
+    // Aggiorna localmente
+    setCurrentTurn(newTurn)
     setSelectedPlayer(null)
+
+    // Broadcast del cambio turno a tutti i client
+    await supabase
+      .channel('auction_events')
+      .send({
+        type: 'broadcast',
+        event: 'turn_changed',
+        payload: {
+          newTurn,
+          currentParticipant: participants[newTurn]
+        }
+      })
   }
 
-  const skipTurn = () => {
-    setCurrentTurn((currentTurn + 1) % participants.length)
+  const skipTurn = async () => {
+    const newTurn = (currentTurn + 1) % participants.length
+    setCurrentTurn(newTurn)
+
+    // Broadcast del cambio turno
+    await supabase
+      .channel('auction_events')
+      .send({
+        type: 'broadcast',
+        event: 'turn_changed',
+        payload: {
+          newTurn,
+          currentParticipant: participants[newTurn]
+        }
+      })
   }
 
   return (
@@ -208,7 +250,7 @@ export default function AuctionAdmin({
           <CardContent>
             <div className="space-y-4">
               <AuctionTimer
-                initialTime={30}
+                initialTime={parseInt(process.env.NEXT_PUBLIC_TIMER || '30')}
                 isActive={isAuctionActive}
                 onTimeUp={handleCloseAuction}
                 roomId={room.id}
@@ -328,34 +370,6 @@ export default function AuctionAdmin({
           </Card>
         </div>
       </div>
-
-      {/* Log estrazioni - aggiorna per usare localAssignedPlayers */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Ultime Estrazioni</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            {localAssignedPlayers.slice(0, 10).map((player, index) => (
-              <div key={`${player.id}-${index}`} className="flex justify-between items-center p-2 border-b">
-                <div className="flex-1">
-                  <span className="font-medium">{player.nome}</span>
-                  <Badge variant="outline" className="ml-2">{player.ruolo}</Badge>
-                  <span className="text-sm text-gray-600 ml-2">{player.squadra}</span>
-                </div>
-                <div className="text-right">
-                  <p className="font-medium">{player.participants?.display_name}</p>
-                  {player.purchase_price && (
-                    <p className="text-sm text-green-600 font-semibold">
-                      {player.purchase_price}M
-                    </p>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
     </div>
   )
 }

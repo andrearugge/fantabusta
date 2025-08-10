@@ -30,7 +30,7 @@ export default function ParticipantPortal({
   const [showResults, setShowResults] = useState(false)
   const [auctionResults, setAuctionResults] = useState<any>(null)
   const [bidConfirmation, setBidConfirmation] = useState<{ show: boolean; amount: number }>({ show: false, amount: 0 })
-  
+
   // Aggiungi stato locale per dati che si aggiornano
   const [localParticipant, setLocalParticipant] = useState(participant)
   const [localMyPlayers, setLocalMyPlayers] = useState<Player[]>(myPlayers)
@@ -42,10 +42,10 @@ export default function ParticipantPortal({
   const calculateMaxBudget = () => {
     // Calcola il numero totale di giocatori attualmente posseduti
     const totalPlayersOwned = localMyPlayers.length
-    
+
     // Calcola il numero di slot ancora liberi (25 è il totale della rosa)
     const remainingSlots = 25 - totalPlayersOwned
-    
+
     // Il budget massimo è il budget attuale meno gli slot ancora liberi
     // (ogni slot libero richiede almeno 1M per essere riempito)
     return Math.max(1, localParticipant.budget - remainingSlots)
@@ -56,7 +56,7 @@ export default function ParticipantPortal({
     if (!role) {
       return false
     }
-    
+
     const limits = { P: 3, D: 8, C: 8, A: 6 }
     const currentCount = localPlayerCounts[role as keyof typeof localPlayerCounts] // Usa i conteggi locali
     const limit = limits[role as keyof typeof limits]
@@ -104,19 +104,35 @@ export default function ParticipantPortal({
             ...prev,
             budget: prev.budget - winningBid
           }))
-          
-          // Aggiungi il giocatore alla squadra
-          const newPlayer = {
-            ...player,
-            assigned_to: participant.id
-          }
-          setLocalMyPlayers(prev => [...prev, newPlayer])
-          
-          // Aggiorna i conteggi dei ruoli
-          setLocalPlayerCounts(prev => ({
-            ...prev,
-            [player.ruolo]: prev[player.ruolo as keyof typeof prev] + 1
-          }))
+
+          // Aggiungi il giocatore alla squadra SOLO se non è già presente
+          setLocalMyPlayers(prev => {
+            // Verifica se il giocatore è già presente
+            const playerExists = prev.some(p => p.id === player.id)
+            if (playerExists) {
+              return prev // Non aggiungere duplicati
+            }
+
+            const newPlayer = {
+              ...player,
+              assigned_to: participant.id
+            }
+            return [...prev, newPlayer]
+          })
+
+          // Aggiorna i conteggi dei ruoli SOLO se il giocatore non era già presente
+          setLocalPlayerCounts(prev => {
+            const currentPlayers = localMyPlayers.filter(p => p.id !== player.id)
+            const playerExists = currentPlayers.some(p => p.id === player.id)
+            if (playerExists) {
+              return prev // Non aggiornare i conteggi se il giocatore era già presente
+            }
+
+            return {
+              ...prev,
+              [player.ruolo]: prev[player.ruolo as keyof typeof prev] + 1
+            }
+          })
         }
 
         // Chiudi risultati dopo 5 secondi
@@ -158,7 +174,7 @@ export default function ParticipantPortal({
           amount
         })
       })
-      
+
       if (response.ok) {
         // Mostra conferma dell'offerta
         setBidConfirmation({ show: true, amount })
@@ -290,7 +306,7 @@ export default function ParticipantPortal({
 
               {/* Sostituisci il timer manuale con AuctionTimer */}
               <AuctionTimer
-                initialTime={30}
+                initialTime={parseInt(process.env.NEXT_PUBLIC_TIMER || '30')}
                 isActive={true}
                 onTimeUp={() => setCurrentAuction(null)}
                 roomId={participant.room_id}
@@ -391,8 +407,8 @@ export default function ParticipantPortal({
                   </div>
                 </div>
               )}
-              
-              <Button 
+
+              <Button
                 onClick={() => setShowResults(false)}
                 className="w-full mt-4"
                 variant="outline"

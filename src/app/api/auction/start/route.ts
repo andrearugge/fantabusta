@@ -31,7 +31,8 @@ export async function POST(request: NextRequest) {
 
     // Crea timer nel database
     const startTime = new Date()
-    const endTime = new Date(Date.now() + 30000) // 30 secondi
+    const timerDuration = parseInt(process.env.NEXT_PUBLIC_TIMER || '30') * 1000 // Converti in millisecondi
+    const endTime = new Date(Date.now() + timerDuration)
     
     const { data: timer, error: timerError } = await supabase
       .from('auction_timers')
@@ -64,7 +65,7 @@ export async function POST(request: NextRequest) {
           currentTurn,
           timerId: timer.id,
           auctionEndTime: endTime.getTime(),
-          timeRemaining: 30
+          timeRemaining: parseInt(process.env.NEXT_PUBLIC_TIMER || '30')
         }
       })
 
