@@ -30,6 +30,8 @@ export default function AuctionAdmin({
   const [timeRemaining, setTimeRemaining] = useState(0)
   const [isAuctionActive, setIsAuctionActive] = useState(false)
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null)
+  // Aggiungi stato per i filtri ruolo
+  const [selectedRoles, setSelectedRoles] = useState<string[]>(['P', 'D', 'C', 'A'])
   // Aggiungi stato locale per i giocatori
   const [localPlayers, setLocalPlayers] = useState<Player[]>(players)
 
@@ -37,15 +39,38 @@ export default function AuctionAdmin({
 
   // Aggiorna i giocatori disponibili basandosi sullo stato locale
   const availablePlayers = localPlayers.filter(p => !p.is_assigned)
-  const filteredPlayers = availablePlayers.filter(p =>
-    p.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    p.squadra.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  const filteredPlayers = availablePlayers.filter(p => {
+    // Filtro per nome/squadra
+    const matchesSearch = p.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                       p.squadra.toLowerCase().includes(searchTerm.toLowerCase())
+    
+    // Filtro per ruolo
+    const matchesRole = selectedRoles.includes(p.ruolo)
+    
+    // AND tra i due filtri
+    return matchesSearch && matchesRole
+  })
 
   const currentParticipant = useMemo(() => {
     return participants[currentTurn]
   }, [participants, currentTurn])
 
+  // Funzione per gestire il toggle dei ruoli
+  const toggleRole = (role: string) => {
+    setSelectedRoles(prev => 
+      prev.includes(role) 
+        ? prev.filter(r => r !== role)
+        : [...prev, role]
+    )
+  }
+  
+  // Funzione per selezionare/deselezionare tutti i ruoli
+  const toggleAllRoles = () => {
+    setSelectedRoles(prev => 
+      prev.length === 4 ? [] : ['P', 'D', 'C', 'A']
+    )
+  }
+  
   // Subscription realtime per aggiornamenti asta
   useEffect(() => {
     const channel = supabase
@@ -287,7 +312,38 @@ export default function AuctionAdmin({
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
-
+              
+              {/* Filtri per ruolo */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium">Filtra per ruolo:</label>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={toggleAllRoles}
+                    className="text-xs"
+                  >
+                    {selectedRoles.length === 4 ? 'Deseleziona tutti' : 'Seleziona tutti'}
+                  </Button>
+                </div>
+                <div className="flex gap-4">
+                  {['P', 'D', 'C', 'A'].map((role) => (
+                    <label key={role} className="flex items-center space-x-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={selectedRoles.includes(role)}
+                        onChange={() => toggleRole(role)}
+                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      <span className="text-sm font-medium">{role}</span>
+                      <Badge variant="outline" className="text-xs">
+                        {availablePlayers.filter(p => p.ruolo === role).length}
+                      </Badge>
+                    </label>
+                  ))}
+                </div>
+              </div>
+              
               <div className="max-h-96 overflow-y-auto space-y-2">
                 {filteredPlayers.map((player) => (
                   <div
