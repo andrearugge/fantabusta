@@ -2,9 +2,13 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Home, ChevronRight, Users, Trophy } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Home, ChevronRight, Users, Trophy, Trash2, UserPlus } from 'lucide-react'
 import { Room, Participant, Player } from '@/types'
 import Link from 'next/link'
+import { useState } from 'react'
+import { createClient } from '@/lib/supabase/client'
+import AssignPlayerModal from './AssignPlayerModal'
 
 interface TeamsViewProps {
   room: Room
@@ -23,11 +27,15 @@ export default function TeamsView({
   participants,
   assignedPlayers
 }: TeamsViewProps) {
-  
-  // Raggruppa giocatori per partecipante
+  const [isRemoving, setIsRemoving] = useState<string | null>(null)
+  const [localAssignedPlayers, setLocalAssignedPlayers] = useState(assignedPlayers)
+  const [isAssignModalOpen, setIsAssignModalOpen] = useState(false)
+  const supabase = createClient()
+
+  // Raggruppa giocatori per partecipante usando i dati locali
   const teamsByParticipant = participants.map(participant => {
-    const playersByRole = assignedPlayers.filter(p => p.assigned_to === participant.id)
-    
+    const playersByRole = localAssignedPlayers.filter(p => p.assigned_to === participant.id)
+
     const teamData = {
       participant,
       players: {
@@ -39,9 +47,48 @@ export default function TeamsView({
       totalSpent: playersByRole.reduce((sum, p) => sum + (p.purchase_price || 0), 0),
       totalPlayers: playersByRole.length
     }
-    
+
     return teamData
   })
+
+  const handleRemovePlayer = async (playerId: string, participantId: string) => {
+    if (isRemoving) return
+
+    setIsRemoving(playerId)
+
+    try {
+      const response = await fetch('/api/players/remove', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ playerId, participantId })
+      })
+
+      const result = await response.json()
+
+      if (response.ok) {
+        // Aggiorna lo stato locale rimuovendo il giocatore
+        setLocalAssignedPlayers(prev =>
+          prev.filter(p => p.id !== playerId)
+        )
+
+        // Mostra messaggio di successo (opzionale)
+        console.log(result.message)
+      } else {
+        console.error('Errore rimozione:', result.error)
+        alert('Errore durante la rimozione del giocatore')
+      }
+    } catch (error) {
+      console.error('Errore rimozione giocatore:', error)
+      alert('Errore durante la rimozione del giocatore')
+    } finally {
+      setIsRemoving(null)
+    }
+  }
+
+  const handlePlayerAssigned = () => {
+    // Ricarica la pagina per aggiornare i dati
+    window.location.reload()
+  }
 
   return (
     <div className="space-y-6">
@@ -69,6 +116,13 @@ export default function TeamsView({
           <h1 className="text-3xl font-bold text-black">Formazioni - Asta {room.code}</h1>
           <p className="text-gray-600">Visualizza tutte le squadre dei partecipanti</p>
         </div>
+        <Button
+          onClick={() => setIsAssignModalOpen(true)}
+          className="flex items-center gap-2"
+        >
+          <UserPlus className="h-4 w-4" />
+          Assegna Calciatore
+        </Button>
       </div>
 
       {/* Grid delle formazioni */}
@@ -99,7 +153,18 @@ export default function TeamsView({
                     {team.players.P.map((player) => (
                       <div key={player.id} className="flex justify-between items-center text-sm">
                         <span className="truncate">{player.nome}</span>
-                        <span className="text-green-600 font-medium ml-2">{player.purchase_price || 0}M</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-green-600 font-medium">{player.purchase_price || 0}M</span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                            onClick={() => handleRemovePlayer(player.id, team.participant.id)}
+                            disabled={isRemoving === player.id}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -117,7 +182,18 @@ export default function TeamsView({
                     {team.players.D.map((player) => (
                       <div key={player.id} className="flex justify-between items-center text-sm">
                         <span className="truncate">{player.nome}</span>
-                        <span className="text-green-600 font-medium ml-2">{player.purchase_price || 0}M</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-green-600 font-medium">{player.purchase_price || 0}M</span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                            onClick={() => handleRemovePlayer(player.id, team.participant.id)}
+                            disabled={isRemoving === player.id}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -135,7 +211,18 @@ export default function TeamsView({
                     {team.players.C.map((player) => (
                       <div key={player.id} className="flex justify-between items-center text-sm">
                         <span className="truncate">{player.nome}</span>
-                        <span className="text-green-600 font-medium ml-2">{player.purchase_price || 0}M</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-green-600 font-medium">{player.purchase_price || 0}M</span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                            onClick={() => handleRemovePlayer(player.id, team.participant.id)}
+                            disabled={isRemoving === player.id}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -153,7 +240,18 @@ export default function TeamsView({
                     {team.players.A.map((player) => (
                       <div key={player.id} className="flex justify-between items-center text-sm">
                         <span className="truncate">{player.nome}</span>
-                        <span className="text-green-600 font-medium ml-2">{player.purchase_price || 0}M</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-green-600 font-medium">{player.purchase_price || 0}M</span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                            onClick={() => handleRemovePlayer(player.id, team.participant.id)}
+                            disabled={isRemoving === player.id}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -171,6 +269,15 @@ export default function TeamsView({
           </Card>
         ))}
       </div>
+
+      {/* Modale Assegnazione */}
+      <AssignPlayerModal
+        isOpen={isAssignModalOpen}
+        onClose={() => setIsAssignModalOpen(false)}
+        room={room}
+        participants={participants}
+        onPlayerAssigned={handlePlayerAssigned}
+      />
     </div>
   )
 }
