@@ -132,7 +132,7 @@ export default function TeamsView({
               </CardTitle>
               <div className="flex justify-between text-sm text-gray-600">
                 <span>Budget speso: <span className="font-semibold text-green-600">{team.totalSpent}M</span></span>
-                <span>Rimanente: <span className="font-semibold">{500 - team.totalSpent}M</span></span>
+                <span>Rimanente: <span className="font-semibold">{team.participant.budget}M</span></span>
               </div>
             </CardHeader>
             <CardContent className="space-y-4">

@@ -21,10 +21,13 @@ interface AuctionAdminProps {
 
 export default function AuctionAdmin({
   room,
-  participants,
+  participants: initialParticipants,
   players,
   assignedPlayers
 }: AuctionAdminProps) {
+  // Aggiungi stato locale per i partecipanti
+  const [participants, setParticipants] = useState(initialParticipants)
+  
   const [searchTerm, setSearchTerm] = useState('')
   const [currentTurn, setCurrentTurn] = useState(0)
   const [timeRemaining, setTimeRemaining] = useState(0)
@@ -95,13 +98,22 @@ export default function AuctionAdmin({
       .on('broadcast', { event: 'turn_changed' }, (payload) => {
         setCurrentTurn(payload.payload.newTurn)
       })
-      .on('broadcast', { event: 'auction_closed' }, (payload) => {
+      .on('broadcast', { event: 'auction_closed' }, async (payload) => {
         const { player, winner, winningBid } = payload.payload
 
         // Gestisci chiusura asta
         setIsAuctionActive(false)
         setSelectedPlayer(null)
         setTimeRemaining(0)
+        
+        // AGGIUNGI: Aggiorna il budget del vincitore
+        if (winner && winningBid > 0) {
+          setParticipants(prev => prev.map(p => 
+            p.id === winner.participant_id 
+              ? { ...p, budget: p.budget - winningBid }
+              : p
+          ))
+        }
       })
       .subscribe()
 
@@ -362,9 +374,21 @@ export default function AuctionAdmin({
         </div>
         <div className="lg:col-span-2 col-span-5 space-y-6 lg:px-8 px-4 py-8 border-l border-gray-200">
           {/* Squadre */}
-          <div className="text-lg font-bold flex items-center gap-2">
-            <Users className="h-5 w-5" /> Squadre
+          <div className="grid grid-cols-2 gap-4">
+            <div className="col-span-1">
+              <div className="text-lg font-bold flex items-center gap-2">
+                <Users className="h-5 w-5" /> Squadre
+              </div>
+            </div>
+            <div className="col-span-1 justify-end flex items-center">
+              <Link href={`/teams/${room.code}`}>
+                <Button variant="outline" size="sm" className="cursor-pointer px-3">
+                  Formazioni
+                </Button>
+              </Link>
+            </div>
           </div>
+
           <Button
             onClick={skipTurn}
             variant="outline"
