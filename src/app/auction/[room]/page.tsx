@@ -53,7 +53,7 @@ export default async function AuctionPage({ params }: AuctionPageProps) {
     .order('created_at', { ascending: false })
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-gray-50 bg-white">
       <div className="container mx-auto px-4 py-8">
         <AuctionAdmin 
           room={roomData}

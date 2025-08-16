@@ -13,19 +13,6 @@ export default function HomePage() {
         <h2 className="text-2xl font-bold text-black mb-6">Aste Attive</h2>
         <ActiveRooms />
       </div>
-
-      {/* CTA Section */}
-      <div className="text-center bg-gray-50 rounded-lg p-8">
-        <h2 className="text-2xl font-bold mb-4">Pronto per iniziare?</h2>
-        <p className="text-gray-600 mb-6">
-          Crea la tua asta in meno di 2 minuti
-        </p>
-        <Link href="/setup">
-          <Button size="lg" variant="outline">
-            Inizia Ora
-          </Button>
-        </Link>
-      </div>
     </div>
   )
 }

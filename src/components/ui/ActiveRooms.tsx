@@ -79,7 +79,7 @@ export default function ActiveRooms() {
       {rooms.map((room) => {
         const participantCount = room.participants[0]?.count || 0
         const createdDate = new Date(room.created_at).toLocaleDateString('it-IT')
-        
+
         return (
           <Card key={room.id} className="hover:shadow-lg transition-shadow">
             <CardHeader>
@@ -105,7 +105,7 @@ export default function ActiveRooms() {
                   <span>{room.budget_default}M€</span>
                 </div>
               </div>
-              
+
               <div className="flex gap-2">
                 <Link href={`/auction/${room.code}`} className="flex-1">
                   <Button className="cursor-pointer w-full" size="sm">
@@ -127,6 +127,28 @@ export default function ActiveRooms() {
           </Card>
         )
       })}
+
+      <Card className="hover:shadow-lg transition-shadow flex flex-col">
+        <CardHeader className="flex-shrink-0">
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              Crea una nuova asta
+            </CardTitle>
+          </div>
+          <CardDescription>
+            Crea la tua asta in meno di 2 minuti
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex-1 flex items-center justify-center">
+          <div className="flex gap-2 w-full">
+            <Link href="/setup" className="w-full">
+              <Button className="cursor-pointer w-full" size="sm">
+                Nuova asta
+              </Button>
+            </Link>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }
