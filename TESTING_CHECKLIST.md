@@ -1,4 +1,4 @@
-# FantaMaster Testing Checklist
+# Fantabusta Testing Checklist
 
 ## 🔧 Setup Testing
 - [ ] Environment variables loaded correctly

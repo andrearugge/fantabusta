@@ -12,7 +12,7 @@ export default function Navbar() {
             href="/" 
             className="flex items-center gap-2 text-xl font-bold text-black hover:text-gray-700 transition-colors"
           >
-            <span>Fantamaster</span>
+            <span>Fantabusta</span>
           </Link>
           
           {/* Credits */}

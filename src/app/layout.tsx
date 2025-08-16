@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Fantamaster - Aste Fantacalcio",
+  title: "Fantabusta - Aste Fantacalcio",
   description: "Piattaforma per gestire aste di fantacalcio in tempo reale",
   icons: {
     icon: [
