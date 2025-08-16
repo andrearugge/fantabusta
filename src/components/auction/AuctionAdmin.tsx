@@ -106,6 +106,66 @@ export default function AuctionAdmin({
         setSelectedPlayer(null)
         setTimeRemaining(0)
         
+        // Aggiungi questa funzione per recuperare i budget aggiornati
+        const refreshParticipantsBudgets = async () => {
+          try {
+            const { data: updatedParticipants, error } = await supabase
+              .from('participants')
+              .select('id, budget')
+              .eq('room_id', room.id)
+            
+            if (error) {
+              console.error('Errore recupero budget:', error)
+              return
+            }
+            
+            // Aggiorna solo i budget nello stato locale
+            setParticipants(prev => prev.map(p => {
+              const updated = updatedParticipants?.find(up => up.id === p.id)
+              return updated ? { ...p, budget: updated.budget } : p
+            }))
+          } catch (error) {
+            console.error('Errore refresh budget:', error)
+          }
+        }
+    
+        // Modifica il useEffect esistente per includere il refresh dei budget
+        useEffect(() => {
+          const channel = supabase
+            .channel('auction_events')
+            .on('broadcast', { event: 'timer_update' }, (payload) => {
+              setTimeRemaining(payload.payload.timeRemaining)
+            })
+            .on('broadcast', { event: 'turn_changed' }, (payload) => {
+              setCurrentTurn(payload.payload.newTurn)
+            })
+            .on('broadcast', { event: 'auction_closed' }, async (payload) => {
+              const { player, winner, winningBid } = payload.payload
+    
+              // Gestisci chiusura asta
+              setIsAuctionActive(false)
+              setSelectedPlayer(null)
+              setTimeRemaining(0)
+              
+              // SOSTITUISCI il calcolo locale con il refresh dal database
+              await refreshParticipantsBudgets()
+            })
+            .subscribe()
+    
+          return () => {
+            supabase.removeChannel(channel)
+          }
+        }, [room.id])
+    
+        // Aggiungi anche un refresh periodico ogni 30 secondi per sicurezza
+        useEffect(() => {
+          const interval = setInterval(() => {
+            refreshParticipantsBudgets()
+          }, 30000) // 30 secondi
+    
+          return () => clearInterval(interval)
+        }, [room.id])
+        
         // AGGIUNGI: Aggiorna il budget del vincitore
         if (winner && winningBid > 0) {
           setParticipants(prev => prev.map(p => 

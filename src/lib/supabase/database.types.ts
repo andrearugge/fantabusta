@@ -122,6 +122,35 @@ export interface Database {
           created_at?: string
         }
       }
+      auction_timers: {
+        Row: {
+          id: string
+          room_id: string
+          player_id: string
+          start_time: string
+          end_time: string
+          is_active: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          room_id: string
+          player_id: string
+          start_time: string
+          end_time: string
+          is_active?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          room_id?: string
+          player_id?: string
+          start_time?: string
+          end_time?: string
+          is_active?: boolean
+          created_at?: string
+        }
+      }
     }
     Views: {
       [_ in never]: never
