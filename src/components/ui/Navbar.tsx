@@ -1,7 +1,6 @@
 'use client'
 
 import Link from 'next/link'
-import { Home } from 'lucide-react'
 
 export default function Navbar() {
   return (
@@ -13,7 +12,6 @@ export default function Navbar() {
             href="/" 
             className="flex items-center gap-2 text-xl font-bold text-black hover:text-gray-700 transition-colors"
           >
-            <Home className="h-6 w-6" />
             <span>Fantamaster</span>
           </Link>
           

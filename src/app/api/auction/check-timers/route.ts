@@ -18,8 +18,6 @@ export async function POST() {
     }
     
     if (expiredTimers && expiredTimers.length > 0) {
-      console.log(`🕐 Trovati ${expiredTimers.length} timer scaduti da disattivare`)
-      
       // Disattiva i timer scaduti
       const { error: updateError } = await supabase
         .from('auction_timers')

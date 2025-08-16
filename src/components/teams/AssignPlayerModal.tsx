@@ -116,7 +116,6 @@ export default function AssignPlayerModal({
         alert(result.error)
       }
     } catch (error) {
-      console.error('Errore assegnazione:', error)
       alert('Errore durante l\'assegnazione')
     } finally {
       setIsAssigning(false)
