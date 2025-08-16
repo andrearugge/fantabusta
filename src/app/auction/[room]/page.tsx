@@ -10,10 +10,10 @@ interface AuctionPageProps {
 
 export default async function AuctionPage({ params }: AuctionPageProps) {
   const supabase = await createClient()
-  
+
   // Await params prima di usarlo
   const { room } = await params
-  
+
   // Recupera dati asta
   const { data: roomData } = await supabase
     .from('rooms')
@@ -53,15 +53,11 @@ export default async function AuctionPage({ params }: AuctionPageProps) {
     .order('created_at', { ascending: false })
 
   return (
-    <div className="min-h-screen bg-gray-50 bg-white">
-      <div className="container mx-auto px-4 py-8">
-        <AuctionAdmin 
-          room={roomData}
-          participants={participants || []}
-          players={players || []}
-          assignedPlayers={assignedPlayers || []}
-        />
-      </div>
-    </div>
+    <AuctionAdmin
+      room={roomData}
+      participants={participants || []}
+      players={players || []}
+      assignedPlayers={assignedPlayers || []}
+    />
   )
 }

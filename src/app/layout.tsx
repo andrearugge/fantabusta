@@ -33,7 +33,7 @@ export const metadata: Metadata = {
         type: 'image/png'
       },
       {
-        rel: 'icon', 
+        rel: 'icon',
         url: '/android-chrome-512x512.png',
         sizes: '512x512',
         type: 'image/png'
@@ -50,10 +50,10 @@ export default function RootLayout({
   return (
     <html lang="it">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gray-50`}
       >
         <Navbar />
-        <main className="min-h-screen bg-gray-50">
+        <main>
           {children}
         </main>
       </body>

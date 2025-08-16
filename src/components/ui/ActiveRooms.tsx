@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Users, Calendar, DollarSign, Play, Settings, Trophy } from 'lucide-react'
+import { Users, DollarSign, Play, Settings } from 'lucide-react'
 
 interface Room {
   id: string
@@ -109,7 +109,7 @@ export default function ActiveRooms() {
               <div className="flex gap-2">
                 <Link href={`/auction/${room.code}`} className="flex-1">
                   <Button className="cursor-pointer w-full" size="sm">
-                    {room.status === 'active' ? 'Partecipa' : 'Gestisci'}
+                    Gestisci
                   </Button>
                 </Link>
                 <Link href={`/teams/${room.code}`}>

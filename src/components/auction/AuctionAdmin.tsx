@@ -110,25 +110,6 @@ export default function AuctionAdmin({
     }
   }, [room.id])
 
-  // RIMUOVI COMPLETAMENTE IL SECONDO useEffect CHE DUPLICA LA LOGICA
-  // useEffect(() => {
-  //   const channel = supabase
-  //     .channel('auction_events')
-  //     .on('broadcast', { event: 'timer_update' }, (payload) => {
-  //       setTimeRemaining(payload.payload.timeRemaining)
-  //     })
-  //     .on('broadcast', { event: 'auction_closed' }, (payload) => {
-  //       // QUESTO DUPLICA LA LOGICA E CAUSA CONFLITTI
-  //     })
-  //     .subscribe()
-  //
-  //   return () => {
-  //     supabase.removeChannel(channel)
-  //   }
-  // }, [])
-
-  // Aggiorna la funzione getParticipantStats per usare localAssignedPlayers
-
   const getParticipantStats = (participant: Participant) => {
     // Usa assignedPlayers invece di localAssignedPlayers
     const playersByRole = assignedPlayers.filter(p => p.assigned_to === participant.id)
@@ -142,7 +123,6 @@ export default function AuctionAdmin({
   }
 
   // Timer countdown
-  // Aggiungi subscription per timer updates
   useEffect(() => {
     const channel = supabase
       .channel('auction_events')
@@ -232,200 +212,199 @@ export default function AuctionAdmin({
   }
 
   return (
-    <div className="space-y-6">
-      {/* Breadcrumbs */}
-      <nav className="flex items-center space-x-2 text-sm text-gray-600">
-        <Link href="/" className="flex items-center hover:text-gray-900 transition-colors">
-          <Home className="h-4 w-4 mr-1" />
-          Homepage
-        </Link>
-        <ChevronRight className="h-4 w-4" />
-        <span className="text-gray-900 font-medium">Asta {room.code}</span>
-        <ChevronRight className="h-4 w-4" />
-        <Link href={`/room-settings?code=${room.code}`} className="flex items-center hover:text-gray-900 transition-colors">
-          <Settings className="h-4 w-4 mr-1" />
-          Impostazioni
-        </Link>
-      </nav>
-
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold text-black">Asta {room.code}</h1>
-          <p className="text-gray-600">Status: {room.status}</p>
-        </div>
-        <div className="text-right">
-          <p className="text-sm text-gray-600">Turno di:</p>
-          <p className="text-lg font-semibold">{currentParticipant?.display_name}</p>
-        </div>
-      </div>
-
-      {/* Timer e controlli */}
-      {isAuctionActive && selectedPlayer && (
-        <Card className="border-2 border-red-500">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Clock className="h-5 w-5" />
-              Asta in corso: {selectedPlayer.nome}
-            </CardTitle>
-            <CardDescription>
-              {selectedPlayer.ruolo} - {selectedPlayer.squadra}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <AuctionTimer
-                initialTime={parseInt(process.env.NEXT_PUBLIC_TIMER || '30')}
-                isActive={isAuctionActive}
-                onTimeUp={handleCloseAuction}
-                roomId={room.id}
-                playerId={selectedPlayer.id}
-              />
-              <Button
-                onClick={handleCloseAuction}
-                variant="destructive"
-                className="w-full"
-              >
-                Chiudi Asta
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* Selezione giocatore */}
-        <div className="lg:col-span-3 space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Search className="h-5 w-5" />
-                Seleziona Calciatore
-              </CardTitle>
-              <CardDescription>
-                {availablePlayers.length} calciatori disponibili
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <Input
-                placeholder="Cerca per nome o squadra..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-
-              {/* Filtri per ruolo */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="text-sm font-medium">Filtra per ruolo:</label>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={toggleAllRoles}
-                    className="text-xs"
-                  >
-                    {selectedRoles.length === 4 ? 'Deseleziona tutti' : 'Seleziona tutti'}
-                  </Button>
-                </div>
-                <div className="flex gap-4">
-                  {['P', 'D', 'C', 'A'].map((role) => (
-                    <label key={role} className="flex items-center space-x-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={selectedRoles.includes(role)}
-                        onChange={() => toggleRole(role)}
-                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                      />
-                      <span className="text-sm font-medium">{role}</span>
-                      <Badge variant="outline" className="text-xs">
-                        {availablePlayers.filter(p => p.ruolo === role).length}
-                      </Badge>
-                    </label>
-                  ))}
+    <div className="lg:h-[90vh] lg:overflow-y">
+      <div className="grid grid-cols-5 h-full">
+        <div className="lg:col-span-3 col-span-5">
+          <div className="container mx-auto lg:px-8 px-4 py-8 space-y-6">
+            <div className="grid grid-cols-2 items-center space-y-2">
+              <div className="lg:col-span-1 col-span-2">
+                <div className="text-lg font-bold flex items-center gap-2">
+                  <Users className="h-5 w-5" /> Selezione calciatore
                 </div>
               </div>
+              <div className="lg:col-span-1 col-span-2 flex lg:justify-end">
+                <nav className="flex items-center space-x-2 text-sm text-gray-600">
+                  <Link href="/" className="flex items-center hover:text-gray-900 transition-colors">
+                    <Home className="h-4 w-4 mr-1" />
+                    Homepage
+                  </Link>
+                  <ChevronRight className="h-4 w-4" />
+                  <span className="text-gray-900 font-medium">Asta</span>
+                  <ChevronRight className="h-4 w-4" />
+                  <Link href={`/room-settings?code=${room.code}`} className="flex items-center hover:text-gray-900 transition-colors">
+                    <Settings className="h-4 w-4 mr-1" />
+                    Impostazioni
+                  </Link>
+                </nav>
+              </div>
+            </div>
 
-              <div className="max-h-96 overflow-y-auto space-y-2">
-                {filteredPlayers.map((player) => (
-                  <div
-                    key={player.id}
-                    className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50"
-                  >
-                    <div>
-                      <p className="font-medium">{player.nome}</p>
-                      <p className="text-sm text-gray-600">
-                        <Badge variant="outline" className="mr-2">
-                          {player.ruolo}
-                        </Badge>
-                        {player.squadra}
-                      </p>
-                    </div>
+            {/* Timer e controlli */}
+            {isAuctionActive && selectedPlayer && (
+              <Card className="border-2 border-red-500">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Clock className="h-5 w-5" />
+                    Asta in corso: {selectedPlayer.nome}
+                  </CardTitle>
+                  <CardDescription>
+                    {selectedPlayer.ruolo} - {selectedPlayer.squadra}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <AuctionTimer
+                      initialTime={parseInt(process.env.NEXT_PUBLIC_TIMER || '30')}
+                      isActive={isAuctionActive}
+                      onTimeUp={handleCloseAuction}
+                      roomId={room.id}
+                      playerId={selectedPlayer.id}
+                    />
                     <Button
-                      onClick={() => startAuction(player)}
-                      disabled={isAuctionActive}
-                      size="sm"
+                      onClick={handleCloseAuction}
+                      variant="destructive"
+                      className="w-full"
                     >
-                      <Play className="h-4 w-4 mr-1" />
-                      Avvia
+                      Chiudi Asta
                     </Button>
                   </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+                </CardContent>
+              </Card>
+            )}
 
-        {/* Squadre */}
-        <div className="space-y-4 lg:col-span-3">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="h-5 w-5" />
-                Squadre
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <Button
-                onClick={skipTurn}
-                variant="outline"
-                className="w-full"
-                disabled={isAuctionActive}
-              >
-                <SkipForward className="h-4 w-4 mr-1" />
-                Salta Turno
-              </Button>
-              <div className="grid gap-6 lg:grid-cols-4">
-                {participants.map((participant, index) => {
-                  const stats = getParticipantStats(participant)
-                  const isCurrentTurn = index === currentTurn
+            <div className="">
+              {/* Selezione giocatore */}
+              <div className="space-y-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Search className="h-5 w-5" />
+                      Seleziona Calciatore
+                    </CardTitle>
+                    <CardDescription>
+                      {availablePlayers.length} calciatori disponibili
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <Input
+                      placeholder="Cerca per nome o squadra..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                    />
 
-                  return (
-                    <div
-                      key={participant.id}
-                      className={`p-3 border rounded-lg ${isCurrentTurn ? 'border-blue-500 bg-blue-50' : ''
-                        }`}
-                    >
-                      <div className="flex justify-between items-start mb-2">
-                        <p className="font-medium">{participant.display_name}</p>
-                        <Badge variant={isCurrentTurn ? 'default' : 'secondary'}>
-                          {stats.total}/25
-                        </Badge>
+                    {/* Filtri per ruolo */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <label className="text-sm font-medium">Filtra per ruolo:</label>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={toggleAllRoles}
+                          className="text-xs"
+                        >
+                          {selectedRoles.length === 4 ? 'Deseleziona tutti' : 'Seleziona tutti'}
+                        </Button>
                       </div>
-
-                      <div className="text-sm text-gray-600 space-y-1">
-                        <p>Budget: {participant.budget}M</p>
-                        <div className="flex gap-2">
-                          <span>P: {stats.P}/3</span>
-                          <span>D: {stats.D}/8</span>
-                          <span>C: {stats.C}/8</span>
-                          <span>A: {stats.A}/6</span>
-                        </div>
+                      <div className="flex gap-2">
+                        {['P', 'D', 'C', 'A'].map((role) => (
+                          <label
+                            key={role}
+                            className={`flex items-center space-x-2 cursor-pointer px-2 py-1 rounded-sm border transition-all duration-200 ${selectedRoles.includes(role)
+                              ? 'bg-blue-100 border-blue-500 text-blue-700'
+                              : 'bg-gray-50 border-gray-300 text-gray-700 hover:bg-gray-100'
+                              }`}
+                            onClick={() => toggleRole(role)}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selectedRoles.includes(role)}
+                              onChange={() => toggleRole(role)}
+                              className="sr-only"
+                            />
+                            <span className="text-sm font-medium">{role}</span>
+                            <span className="text-sm font-medium">{availablePlayers.filter(p => p.ruolo === role).length}</span>
+                          </label>
+                        ))}
                       </div>
                     </div>
-                  )
-                })}
+
+                    <div className="max-h-[300px] overflow-y-auto space-y-2">
+                      {filteredPlayers.map((player) => (
+                        <div
+                          key={player.id}
+                          className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50"
+                        >
+                          <div>
+                            <p className="font-medium">{player.nome}</p>
+                            <p className="text-sm text-gray-600">
+                              <Badge variant="outline" className="mr-2">
+                                {player.ruolo}
+                              </Badge>
+                              {player.squadra}
+                            </p>
+                          </div>
+                          <Button
+                            onClick={() => startAuction(player)}
+                            disabled={isAuctionActive}
+                            size="sm"
+                          >
+                            <Play className="h-4 w-4 mr-1" />
+                            Avvia
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
+        </div>
+        <div className="lg:col-span-2 col-span-5 space-y-6 lg:px-8 px-4 py-8 border-l border-gray-200">
+          {/* Squadre */}
+          <div className="text-lg font-bold flex items-center gap-2">
+            <Users className="h-5 w-5" /> Squadre
+          </div>
+          <Button
+            onClick={skipTurn}
+            variant="outline"
+            className="w-full"
+            disabled={isAuctionActive}
+          >
+            <SkipForward className="h-4 w-4 mr-1" />
+            Salta Turno
+          </Button>
+          <div className="grid gap-2 lg:grid-cols-2">
+            {participants.map((participant, index) => {
+              const stats = getParticipantStats(participant)
+              const isCurrentTurn = index === currentTurn
+
+              return (
+                <div
+                  key={participant.id}
+                  className={`p-3 border rounded-lg ${isCurrentTurn ? ' border-blue-500 bg-blue-50' : 'bg-white'
+                    }`}
+                >
+                  <div className="flex justify-between items-start mb-2">
+                    <p className="font-medium">{participant.display_name}</p>
+                    <Badge variant={isCurrentTurn ? 'default' : 'secondary'}>
+                      {stats.total}/25
+                    </Badge>
+                  </div>
+
+                  <div className="text-sm text-gray-600 space-y-1">
+                    <p>Budget: {participant.budget}M</p>
+                    <div className="flex gap-2">
+                      <span>P: {stats.P}/3</span>
+                      <span>D: {stats.D}/8</span>
+                      <span>C: {stats.C}/8</span>
+                      <span>A: {stats.A}/6</span>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
         </div>
       </div>
     </div>
