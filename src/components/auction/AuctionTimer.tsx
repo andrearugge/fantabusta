@@ -118,28 +118,19 @@ export function AuctionTimer({ initialTime, isActive, onTimeUp, roomId, playerId
   }, [isActive, timerId, supabase, handleTimeUp])
 
   const progressValue = (timeRemaining / initialTime) * 100
-  const isUrgent = timeRemaining <= 10
 
   return (
     <div className="space-y-2">
       <div className="flex justify-between items-center">
         <span className="text-sm font-medium">Tempo rimanente</span>
-        <span className={`text-lg font-bold ${
-          isUrgent ? 'text-red-500' : 'text-blue-600'
-        }`}>
+        <span className="text-lg font-bold text-success-600">
           {timeRemaining}s
         </span>
       </div>
       <Progress 
         value={progressValue} 
-        className={`h-3 ${
-          isUrgent ? 'bg-red-100' : 'bg-blue-100'
-        }`}
+        className="h-3 bg-gray-100"
       />
-      {/* Debug info - rimuovi in produzione */}
-      <div className="text-xs text-gray-500">
-        TimerId: {timerId || 'Non trovato'}
-      </div>
     </div>
   )
 }

@@ -1,0 +1,1 @@
+- aggiornamento lista giocatori dopo asta in auctionAdmin

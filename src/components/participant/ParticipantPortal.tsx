@@ -85,9 +85,10 @@ export default function ParticipantPortal({
         setTimeRemaining(timeLeft)
         setBidAmount('')
         setShowResults(false)
+        setHasMadeBid(false)
+        setLastBidAmount(0)
       })
       .on('broadcast', { event: 'timer_update' }, (payload) => {
-        // Aggiorna timer da server
         setTimeRemaining(payload.payload.timeRemaining)
       })
       .on('broadcast', { event: 'auction_closed' }, (payload) => {
@@ -155,6 +156,10 @@ export default function ParticipantPortal({
   //   }
   // }, [timeRemaining])
 
+  // Aggiungi un nuovo stato per tracciare se è stata fatta almeno una bid
+  const [hasMadeBid, setHasMadeBid] = useState(false)
+  const [lastBidAmount, setLastBidAmount] = useState(0)
+
   const submitBid = async () => {
     if (!currentAuction || !bidAmount || isSubmitting) return
 
@@ -176,10 +181,10 @@ export default function ParticipantPortal({
       })
 
       if (response.ok) {
-        // Mostra conferma dell'offerta
-        setBidConfirmation({ show: true, amount })
-        // Nascondi la conferma dopo 2 secondi
-        setTimeout(() => setBidConfirmation({ show: false, amount: 0 }), 2000)
+        // Imposta che è stata fatta una bid e aggiorna l'importo
+        setHasMadeBid(true)
+        setLastBidAmount(amount)
+        // Rimuovi il timeout che nasconde la conferma
       } else {
         const error = await response.json()
         console.error('Errore API:', error)
@@ -313,19 +318,16 @@ export default function ParticipantPortal({
                 playerId={currentAuction.player.id}
               />
 
-              {/* Conferma offerta */}
-              {bidConfirmation.show && (
-                <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-center">
+              {hasMadeBid && (
+                <div className="bg-green-50 border border-green-200 rounded-sm p-1 text-center">
                   <div className="flex items-center justify-center gap-2 text-green-700">
-                    <CheckCircle className="h-5 w-5" />
-                    <span className="font-medium">Offerta inviata: {bidConfirmation.amount}M</span>
+                    <span className="font-medium">Offerta inviata: {lastBidAmount}M</span>
                   </div>
                 </div>
               )}
-
               {canBidForRole(currentAuction.player.ruolo) ? (
                 <div className="space-y-4">
-                  <div>
+                  <div className="space-y-1">
                     <label className="text-sm font-medium">La tua offerta (max {maxBudget}M)</label>
                     <Input
                       type="number"
