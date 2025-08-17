@@ -129,7 +129,7 @@ export default function TeamsView({
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-black">Formazioni - Asta {room.code}</h1>
+          <h1 className="text-3xl font-bold text-black">Formazioni</h1>
           <p className="text-gray-600">Visualizza tutte le squadre dei partecipanti</p>
         </div>
         <Button

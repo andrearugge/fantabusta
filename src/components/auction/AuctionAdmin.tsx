@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { Progress } from '@/components/ui/progress'
 import { Search, Play, SkipForward, Users, Clock, Home, ChevronRight, Settings } from 'lucide-react'
 import { Room, Participant, Player } from '@/types'
 import Link from 'next/link'
@@ -16,27 +15,154 @@ interface AuctionAdminProps {
   room: Room
   participants: Participant[]
   players: Player[]
-  assignedPlayers: any[]
+}
+
+// Componente separato per le card dei partecipanti
+interface ParticipantCardProps {
+  participant: Participant
+  index: number
+  currentTurn: number
+  roomId: string
+}
+
+function ParticipantCard({ participant, index, currentTurn, roomId }: ParticipantCardProps) {
+  const [stats, setStats] = useState({ P: 0, D: 0, C: 0, A: 0, total: 0 })
+  const supabase = createClient()
+  const isCurrentTurn = index === currentTurn
+
+  const fetchStats = useCallback(async () => {
+    try {
+      const { data: playersByRole, error } = await supabase
+        .from('players')
+        .select('ruolo')
+        .eq('room_id', roomId)
+        .eq('assigned_to', participant.id)
+        .eq('is_assigned', true)
+
+      if (error) {
+        console.error('Errore recupero statistiche:', error)
+        return
+      }
+
+      const newStats = {
+        P: playersByRole?.filter(p => p.ruolo === 'P').length || 0,
+        D: playersByRole?.filter(p => p.ruolo === 'D').length || 0,
+        C: playersByRole?.filter(p => p.ruolo === 'C').length || 0,
+        A: playersByRole?.filter(p => p.ruolo === 'A').length || 0,
+        total: playersByRole?.length || 0
+      }
+
+      setStats(newStats)
+    } catch (error) {
+      console.error('Errore calcolo statistiche:', error)
+    }
+  }, [supabase, roomId, participant.id])
+
+  useEffect(() => {
+    fetchStats()
+  }, [fetchStats])
+
+  // Aggiorna le statistiche quando cambia il partecipante
+  useEffect(() => {
+    fetchStats()
+  }, [participant.budget, fetchStats])
+
+  return (
+    <div
+      className={`p-3 border rounded-lg ${
+        isCurrentTurn ? ' border-blue-500 bg-blue-50' : 'bg-white'
+      }`}
+    >
+      <div className="flex justify-between items-start mb-2">
+        <p className="font-medium">{participant.display_name}</p>
+        <Badge variant={isCurrentTurn ? 'default' : 'secondary'}>
+          {stats.total}/25
+        </Badge>
+      </div>
+
+      <div className="text-sm text-gray-600 space-y-1">
+        <p>Budget: {participant.budget}M</p>
+        <div className="flex gap-2">
+          <span>P: {stats.P}/3</span>
+          <span>D: {stats.D}/8</span>
+          <span>C: {stats.C}/8</span>
+          <span>A: {stats.A}/6</span>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 export default function AuctionAdmin({
   room,
   participants: initialParticipants,
-  players,
-  assignedPlayers
+  players
 }: AuctionAdminProps) {
   // Inizializzazione Supabase
   const supabase = createClient()
 
   // Stati del componente
-  const [participants, setParticipants] = useState(initialParticipants)
+  const [participants, setParticipants] = useState<Participant[]>([])
   const [searchTerm, setSearchTerm] = useState('')
-  const [currentTurn, setCurrentTurn] = useState(room.current_turn || 0)
+  const [currentTurn, setCurrentTurn] = useState(0)
   const [timeRemaining, setTimeRemaining] = useState(0)
   const [isAuctionActive, setIsAuctionActive] = useState(false)
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null)
   const [selectedRoles, setSelectedRoles] = useState<string[]>(['P', 'D', 'C', 'A'])
-  const [localPlayers, setLocalPlayers] = useState<Player[]>(players)
+  const [localPlayers, setLocalPlayers] = useState<Player[]>([])
+
+  // Funzione per caricare tutti i dati dal database
+  const loadDataFromDatabase = useCallback(async () => {
+    try {
+      // Carica room data per ottenere il currentTurn
+      const { data: roomData, error: roomError } = await supabase
+        .from('rooms')
+        .select('current_turn')
+        .eq('id', room.id)
+        .single()
+
+      if (roomError) {
+        console.error('Errore recupero room:', roomError)
+      }
+
+      // Carica partecipanti con ordine fisso dal database
+      const { data: participantsData, error: participantsError } = await supabase
+        .from('participants')
+        .select('*')
+        .eq('room_id', room.id)
+        .order('created_at', { ascending: true })
+
+      if (participantsError) {
+        console.error('Errore recupero partecipanti:', participantsError)
+      } else {
+        setParticipants(participantsData || [])
+      }
+
+      // Carica giocatori
+      const { data: playersData, error: playersError } = await supabase
+        .from('players')
+        .select('*')
+        .eq('room_id', room.id)
+
+      if (playersError) {
+        console.error('Errore recupero giocatori:', playersError)
+      } else {
+        setLocalPlayers(playersData || [])
+      }
+
+      // Imposta il currentTurn dal database
+      if (roomData) {
+        setCurrentTurn(roomData.current_turn || 0)
+      }
+    } catch (error) {
+      console.error('Errore caricamento dati:', error)
+    }
+  }, [supabase, room.id])
+
+  // Carica i dati all'avvio del componente
+  useEffect(() => {
+    loadDataFromDatabase()
+  }, [loadDataFromDatabase])
 
   // Funzione per aggiornare il turno nel database
   const updateTurnInDatabase = useCallback(async (newTurn: number) => {
@@ -51,33 +177,10 @@ export default function AuctionAdmin({
         return false
       }
 
-      setCurrentTurn(newTurn)
       return true
     } catch (error) {
       console.error('Errore update turno:', error)
       return false
-    }
-  }, [supabase, room.id])
-
-  // Funzione per aggiornare i budget dei partecipanti
-  const refreshParticipantsBudgets = useCallback(async () => {
-    try {
-      const { data: updatedParticipants, error } = await supabase
-        .from('participants')
-        .select('id, budget')
-        .eq('room_id', room.id)
-
-      if (error) {
-        console.error('Errore recupero budget:', error)
-        return
-      }
-
-      setParticipants(prev => prev.map(p => {
-        const updated = updatedParticipants?.find(up => up.id === p.id)
-        return updated ? { ...p, budget: updated.budget } : p
-      }))
-    } catch (error) {
-      console.error('Errore refresh budget:', error)
     }
   }, [supabase, room.id])
 
@@ -100,10 +203,12 @@ export default function AuctionAdmin({
       // Calcola il nuovo turno
       const newTurn = (currentTurn + 1) % participants.length
 
-      // Aggiorna nel database
+      // Aggiorna il turno nel database PRIMA di fare il broadcast
       const success = await updateTurnInDatabase(newTurn)
 
       if (success) {
+        // Aggiorna lo stato locale
+        setCurrentTurn(newTurn)
         setSelectedPlayer(null)
 
         // Broadcast del cambio turno a tutti i client
@@ -117,11 +222,14 @@ export default function AuctionAdmin({
               currentParticipant: participants[newTurn]
             }
           })
+
+        // Ricarica solo i dati necessari (giocatori e budget)
+        await loadDataFromDatabase()
       }
     } catch (error) {
       console.error('Errore chiusura asta:', error)
     }
-  }, [selectedPlayer, room.id, currentTurn, participants, supabase, updateTurnInDatabase])
+  }, [selectedPlayer, room.id, currentTurn, participants, supabase, updateTurnInDatabase, loadDataFromDatabase])
 
   // Funzione per saltare il turno
   const skipTurn = useCallback(async () => {
@@ -130,6 +238,8 @@ export default function AuctionAdmin({
     const success = await updateTurnInDatabase(newTurn)
 
     if (success) {
+      setCurrentTurn(newTurn)
+      
       try {
         // Broadcast del cambio turno
         await supabase
@@ -185,45 +295,7 @@ export default function AuctionAdmin({
     )
   }, [])
 
-  const getParticipantStats = useCallback((participant: Participant) => {
-    const playersByRole = assignedPlayers.filter(p => p.assigned_to === participant.id)
-    return {
-      P: playersByRole.filter(p => p.ruolo === 'P').length,
-      D: playersByRole.filter(p => p.ruolo === 'D').length,
-      C: playersByRole.filter(p => p.ruolo === 'C').length,
-      A: playersByRole.filter(p => p.ruolo === 'A').length,
-      total: playersByRole.length
-    }
-  }, [assignedPlayers])
-
-  // useEffect per sincronizzare il turno dal database
-  useEffect(() => {
-    const syncTurnFromDatabase = async () => {
-      try {
-        const { data: roomData } = await supabase
-          .from('rooms')
-          .select('current_turn')
-          .eq('id', room.id)
-          .single()
-
-        if (roomData && roomData.current_turn !== currentTurn) {
-          setCurrentTurn(roomData.current_turn)
-        }
-      } catch (error) {
-        console.error('Errore sync turno:', error)
-      }
-    }
-
-    // Sincronizza all'avvio
-    syncTurnFromDatabase()
-
-    // Sincronizza periodicamente
-    const interval = setInterval(syncTurnFromDatabase, 10000) // ogni 10 secondi
-
-    return () => clearInterval(interval)
-  }, [supabase, room.id, currentTurn])
-
-  // Gestione eventi realtime unificata
+  // Gestione eventi realtime
   useEffect(() => {
     const channel = supabase
       .channel('auction_events')
@@ -231,34 +303,24 @@ export default function AuctionAdmin({
         setTimeRemaining(payload.payload.timeRemaining)
       })
       .on('broadcast', { event: 'turn_changed' }, (payload) => {
+        // Aggiorna solo il currentTurn, non ricaricare i partecipanti
         setCurrentTurn(payload.payload.newTurn)
       })
       .on('broadcast', { event: 'auction_closed' }, async (payload) => {
-        const { player, winner, winningBid } = payload.payload
-
         // Gestisci chiusura asta
         setIsAuctionActive(false)
         setSelectedPlayer(null)
         setTimeRemaining(0)
 
-        // Refresh dal database
-        await refreshParticipantsBudgets()
+        // Ricarica solo i dati necessari dal database
+        await loadDataFromDatabase()
       })
       .subscribe()
 
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [room.id, supabase, refreshParticipantsBudgets])
-
-  // Refresh periodico dei budget
-  useEffect(() => {
-    const interval = setInterval(() => {
-      refreshParticipantsBudgets()
-    }, 30000) // 30 secondi
-
-    return () => clearInterval(interval)
-  }, [refreshParticipantsBudgets])
+  }, [room.id, supabase, loadDataFromDatabase])
 
   // Calcoli derivati
   const availablePlayers = useMemo(() =>
@@ -271,17 +333,21 @@ export default function AuctionAdmin({
       // Filtro per nome/squadra
       const matchesSearch = p.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
         p.squadra.toLowerCase().includes(searchTerm.toLowerCase())
-
+  
       // Filtro per ruolo
       const matchesRole = selectedRoles.includes(p.ruolo)
-
+  
       return matchesSearch && matchesRole
+    }).sort((a, b) => {
+      // Ordina prima per ruolo, poi per nome
+      if (a.ruolo !== b.ruolo) {
+        const roleOrder = { 'P': 1, 'D': 2, 'C': 3, 'A': 4 }
+        return roleOrder[a.ruolo as keyof typeof roleOrder] - roleOrder[b.ruolo as keyof typeof roleOrder]
+      }
+      // Se stesso ruolo, ordina per nome
+      return a.nome.localeCompare(b.nome)
     })
   }, [availablePlayers, searchTerm, selectedRoles])
-
-  const currentParticipant = useMemo(() => {
-    return participants[currentTurn]
-  }, [participants, currentTurn])
 
   return (
     <div className="lg:h-[90vh] lg:overflow-y">
@@ -379,43 +445,31 @@ export default function AuctionAdmin({
                       </div>
                       <div className="flex gap-2">
                         {['P', 'D', 'C', 'A'].map((role) => (
-                          <label
+                          <Button
                             key={role}
-                            className={`flex items-center space-x-2 cursor-pointer px-2 py-1 rounded-sm border transition-all duration-200 ${selectedRoles.includes(role)
-                              ? 'bg-blue-100 border-blue-500 text-blue-700'
-                              : 'bg-gray-50 border-gray-300 text-gray-700 hover:bg-gray-100'
-                              }`}
+                            variant={selectedRoles.includes(role) ? 'default' : 'outline'}
+                            size="sm"
                             onClick={() => toggleRole(role)}
                           >
-                            <input
-                              type="checkbox"
-                              checked={selectedRoles.includes(role)}
-                              onChange={() => toggleRole(role)}
-                              className="sr-only"
-                            />
-                            <span className="text-sm font-medium">{role}</span>
-                            <span className="text-sm font-medium">
-                              {availablePlayers.filter(p => p.ruolo === role).length}
-                            </span>
-                          </label>
+                            {role}
+                          </Button>
                         ))}
                       </div>
                     </div>
 
-                    <div className="max-h-[300px] overflow-y-auto space-y-2">
+                    {/* Lista giocatori */}
+                    <div className="max-h-96 overflow-y-auto space-y-2">
                       {filteredPlayers.map((player) => (
                         <div
                           key={player.id}
                           className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50"
                         >
-                          <div>
-                            <p className="font-medium">{player.nome}</p>
-                            <p className="text-sm text-gray-600">
-                              <Badge variant="outline" className="mr-2">
-                                {player.ruolo}
-                              </Badge>
-                              {player.squadra}
-                            </p>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline">{player.ruolo}</Badge>
+                              <span className="font-medium">{player.nome}</span>
+                            </div>
+                            <p className="text-sm text-gray-600">{player.squadra}</p>
                           </div>
                           <Button
                             onClick={() => startAuction(player)}
@@ -460,36 +514,17 @@ export default function AuctionAdmin({
             <SkipForward className="h-4 w-4 mr-1" />
             Salta Turno
           </Button>
+          
           <div className="grid gap-2 lg:grid-cols-2">
-            {participants.map((participant, index) => {
-              const stats = getParticipantStats(participant)
-              const isCurrentTurn = index === currentTurn
-
-              return (
-                <div
-                  key={participant.id}
-                  className={`p-3 border rounded-lg ${isCurrentTurn ? ' border-blue-500 bg-blue-50' : 'bg-white'
-                    }`}
-                >
-                  <div className="flex justify-between items-start mb-2">
-                    <p className="font-medium">{participant.display_name}</p>
-                    <Badge variant={isCurrentTurn ? 'default' : 'secondary'}>
-                      {stats.total}/25
-                    </Badge>
-                  </div>
-
-                  <div className="text-sm text-gray-600 space-y-1">
-                    <p>Budget: {participant.budget}M</p>
-                    <div className="flex gap-2">
-                      <span>P: {stats.P}/3</span>
-                      <span>D: {stats.D}/8</span>
-                      <span>C: {stats.C}/8</span>
-                      <span>A: {stats.A}/6</span>
-                    </div>
-                  </div>
-                </div>
-              )
-            })}
+            {participants.map((participant, index) => (
+              <ParticipantCard
+                key={participant.id}
+                participant={participant}
+                index={index}
+                currentTurn={currentTurn}
+                roomId={room.id}
+              />
+            ))}
           </div>
         </div>
       </div>
