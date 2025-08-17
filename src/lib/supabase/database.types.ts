@@ -15,6 +15,7 @@ export interface Database {
           code: string
           status: 'setup' | 'active' | 'completed'
           budget_default: number
+          current_turn: number
           created_at: string
         }
         Insert: {
@@ -22,6 +23,7 @@ export interface Database {
           code: string
           status?: 'setup' | 'active' | 'completed'
           budget_default?: number
+          current_turn?: number
           created_at?: string
         }
         Update: {
@@ -29,6 +31,7 @@ export interface Database {
           code?: string
           status?: 'setup' | 'active' | 'completed'
           budget_default?: number
+          current_turn?: number
           created_at?: string
         }
       }

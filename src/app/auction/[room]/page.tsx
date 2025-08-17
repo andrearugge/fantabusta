@@ -14,7 +14,7 @@ export default async function AuctionPage({ params }: AuctionPageProps) {
   // Await params prima di usarlo
   const { room } = await params
 
-  // Recupera dati asta
+  // Recupera dati asta con current_turn
   const { data: roomData } = await supabase
     .from('rooms')
     .select('*')

@@ -25,17 +25,39 @@ export default function AuctionAdmin({
   players,
   assignedPlayers
 }: AuctionAdminProps) {
+  // Inizializzazione Supabase
+  const supabase = createClient()
+
   // Stati del componente
   const [participants, setParticipants] = useState(initialParticipants)
   const [searchTerm, setSearchTerm] = useState('')
-  const [currentTurn, setCurrentTurn] = useState(0)
+  const [currentTurn, setCurrentTurn] = useState(room.current_turn || 0)
   const [timeRemaining, setTimeRemaining] = useState(0)
   const [isAuctionActive, setIsAuctionActive] = useState(false)
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null)
   const [selectedRoles, setSelectedRoles] = useState<string[]>(['P', 'D', 'C', 'A'])
   const [localPlayers, setLocalPlayers] = useState<Player[]>(players)
 
-  const supabase = createClient()
+  // Funzione per aggiornare il turno nel database
+  const updateTurnInDatabase = useCallback(async (newTurn: number) => {
+    try {
+      const { error } = await supabase
+        .from('rooms')
+        .update({ current_turn: newTurn })
+        .eq('id', room.id)
+      
+      if (error) {
+        console.error('Errore aggiornamento turno:', error)
+        return false
+      }
+      
+      setCurrentTurn(newTurn)
+      return true
+    } catch (error) {
+      console.error('Errore update turno:', error)
+      return false
+    }
+  }, [supabase, room.id])
 
   // Funzione per aggiornare i budget dei partecipanti
   const refreshParticipantsBudgets = useCallback(async () => {
@@ -58,6 +80,148 @@ export default function AuctionAdmin({
       console.error('Errore refresh budget:', error)
     }
   }, [supabase, room.id])
+
+  // Funzione per chiudere l'asta
+  const handleCloseAuction = useCallback(async () => {
+    if (!selectedPlayer) return
+  
+    setIsAuctionActive(false)
+  
+    try {
+      await fetch('/api/auction/close', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          roomId: room.id,
+          playerId: selectedPlayer.id
+        })
+      })
+  
+      // Calcola il nuovo turno
+      const newTurn = (currentTurn + 1) % participants.length
+  
+      // Aggiorna nel database
+      const success = await updateTurnInDatabase(newTurn)
+      
+      if (success) {
+        setSelectedPlayer(null)
+  
+        // Broadcast del cambio turno a tutti i client
+        await supabase
+          .channel('auction_events')
+          .send({
+            type: 'broadcast',
+            event: 'turn_changed',
+            payload: {
+              newTurn,
+              currentParticipant: participants[newTurn]
+            }
+          })
+      }
+    } catch (error) {
+      console.error('Errore chiusura asta:', error)
+    }
+  }, [selectedPlayer, room.id, currentTurn, participants, supabase, updateTurnInDatabase])
+
+  // Funzione per saltare il turno
+  const skipTurn = useCallback(async () => {
+    const newTurn = (currentTurn + 1) % participants.length
+    
+    const success = await updateTurnInDatabase(newTurn)
+    
+    if (success) {
+      try {
+        // Broadcast del cambio turno
+        await supabase
+          .channel('auction_events')
+          .send({
+            type: 'broadcast',
+            event: 'turn_changed',
+            payload: {
+              newTurn,
+              currentParticipant: participants[newTurn]
+            }
+          })
+      } catch (error) {
+        console.error('Errore skip turno:', error)
+      }
+    }
+  }, [currentTurn, participants, supabase, updateTurnInDatabase])
+
+  // Funzione per avviare l'asta
+  const startAuction = useCallback(async (player: Player) => {
+    setSelectedPlayer(player)
+    setIsAuctionActive(true)
+
+    try {
+      await fetch('/api/auction/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          roomId: room.id,
+          playerId: player.id,
+          currentTurn
+        })
+      })
+    } catch (error) {
+      console.error('Errore avvio asta:', error)
+      setIsAuctionActive(false)
+      setSelectedPlayer(null)
+    }
+  }, [room.id, currentTurn])
+
+  // Funzioni di gestione UI
+  const toggleRole = useCallback((role: string) => {
+    setSelectedRoles(prev =>
+      prev.includes(role)
+        ? prev.filter(r => r !== role)
+        : [...prev, role]
+    )
+  }, [])
+
+  const toggleAllRoles = useCallback(() => {
+    setSelectedRoles(prev =>
+      prev.length === 4 ? [] : ['P', 'D', 'C', 'A']
+    )
+  }, [])
+
+  const getParticipantStats = useCallback((participant: Participant) => {
+    const playersByRole = assignedPlayers.filter(p => p.assigned_to === participant.id)
+    return {
+      P: playersByRole.filter(p => p.ruolo === 'P').length,
+      D: playersByRole.filter(p => p.ruolo === 'D').length,
+      C: playersByRole.filter(p => p.ruolo === 'C').length,
+      A: playersByRole.filter(p => p.ruolo === 'A').length,
+      total: playersByRole.length
+    }
+  }, [assignedPlayers])
+
+  // useEffect per sincronizzare il turno dal database
+  useEffect(() => {
+    const syncTurnFromDatabase = async () => {
+      try {
+        const { data: roomData } = await supabase
+          .from('rooms')
+          .select('current_turn')
+          .eq('id', room.id)
+          .single()
+        
+        if (roomData && roomData.current_turn !== currentTurn) {
+          setCurrentTurn(roomData.current_turn)
+        }
+      } catch (error) {
+        console.error('Errore sync turno:', error)
+      }
+    }
+  
+    // Sincronizza all'avvio
+    syncTurnFromDatabase()
+  
+    // Sincronizza periodicamente
+    const interval = setInterval(syncTurnFromDatabase, 10000) // ogni 10 secondi
+  
+    return () => clearInterval(interval)
+  }, [supabase, room.id, currentTurn])
 
   // Gestione eventi realtime unificata
   useEffect(() => {
@@ -118,112 +282,6 @@ export default function AuctionAdmin({
   const currentParticipant = useMemo(() => {
     return participants[currentTurn]
   }, [participants, currentTurn])
-
-  // Funzioni di gestione
-  const toggleRole = useCallback((role: string) => {
-    setSelectedRoles(prev =>
-      prev.includes(role)
-        ? prev.filter(r => r !== role)
-        : [...prev, role]
-    )
-  }, [])
-
-  const toggleAllRoles = useCallback(() => {
-    setSelectedRoles(prev =>
-      prev.length === 4 ? [] : ['P', 'D', 'C', 'A']
-    )
-  }, [])
-
-  const getParticipantStats = useCallback((participant: Participant) => {
-    const playersByRole = assignedPlayers.filter(p => p.assigned_to === participant.id)
-    return {
-      P: playersByRole.filter(p => p.ruolo === 'P').length,
-      D: playersByRole.filter(p => p.ruolo === 'D').length,
-      C: playersByRole.filter(p => p.ruolo === 'C').length,
-      A: playersByRole.filter(p => p.ruolo === 'A').length,
-      total: playersByRole.length
-    }
-  }, [assignedPlayers])
-
-  const startAuction = useCallback(async (player: Player) => {
-    setSelectedPlayer(player)
-    setIsAuctionActive(true)
-
-    try {
-      await fetch('/api/auction/start', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          roomId: room.id,
-          playerId: player.id,
-          currentTurn
-        })
-      })
-    } catch (error) {
-      console.error('Errore avvio asta:', error)
-      setIsAuctionActive(false)
-      setSelectedPlayer(null)
-    }
-  }, [room.id, currentTurn])
-
-  const handleCloseAuction = useCallback(async () => {
-    if (!selectedPlayer) return
-
-    setIsAuctionActive(false)
-
-    try {
-      await fetch('/api/auction/close', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          roomId: room.id,
-          playerId: selectedPlayer.id
-        })
-      })
-
-      // Calcola il nuovo turno
-      const newTurn = (currentTurn + 1) % participants.length
-
-      // Aggiorna localmente
-      setCurrentTurn(newTurn)
-      setSelectedPlayer(null)
-
-      // Broadcast del cambio turno a tutti i client
-      await supabase
-        .channel('auction_events')
-        .send({
-          type: 'broadcast',
-          event: 'turn_changed',
-          payload: {
-            newTurn,
-            currentParticipant: participants[newTurn]
-          }
-        })
-    } catch (error) {
-      console.error('Errore chiusura asta:', error)
-    }
-  }, [selectedPlayer, room.id, currentTurn, participants, supabase])
-
-  const skipTurn = useCallback(async () => {
-    const newTurn = (currentTurn + 1) % participants.length
-    setCurrentTurn(newTurn)
-
-    try {
-      // Broadcast del cambio turno
-      await supabase
-        .channel('auction_events')
-        .send({
-          type: 'broadcast',
-          event: 'turn_changed',
-          payload: {
-            newTurn,
-            currentParticipant: participants[newTurn]
-          }
-        })
-    } catch (error) {
-      console.error('Errore skip turno:', error)
-    }
-  }, [currentTurn, participants, supabase])
 
   return (
     <div className="lg:h-[90vh] lg:overflow-y">
