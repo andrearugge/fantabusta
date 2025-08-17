@@ -151,6 +151,14 @@ async function closeAuction(roomId: string, playerId: string) {
     .from('bids')
     .delete()
     .eq('player_id', playerId)
+
+  // NUOVO: Disattiva i timer per questo giocatore
+  await supabase
+    .from('auction_timers')
+    .update({ is_active: false })
+    .eq('player_id', playerId)
+    .eq('room_id', roomId)
+    .eq('is_active', true)
 }
 
 // Funzione per gestire timer server-side
