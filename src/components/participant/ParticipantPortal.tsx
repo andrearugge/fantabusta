@@ -32,6 +32,7 @@ export default function ParticipantPortal({
   // Stati per i risultati dell'asta
   const [showResults, setShowResults] = useState(false)
   const [auctionResults, setAuctionResults] = useState<any>(null)
+  const [isResultsReady, setIsResultsReady] = useState(false) // Nuovo stato per evitare doppia apertura
 
   // Stati per la conferma dell'offerta
   const [hasMadeBid, setHasMadeBid] = useState(false)
@@ -160,6 +161,7 @@ export default function ParticipantPortal({
         setShowResults(false)
         setHasMadeBid(false)
         setLastBidAmount(0)
+        setIsResultsReady(false) // Reset per nuova asta
       })
       .on('broadcast', { event: 'timer_update' }, (payload) => {
         setTimeRemaining(payload.payload.timeRemaining)
@@ -167,21 +169,42 @@ export default function ParticipantPortal({
       .on('broadcast', { event: 'auction_closed' }, (payload) => {
         setCurrentAuction(null)
         setTimeRemaining(0)
-        setAuctionResults(payload.payload)
-        setShowResults(true)
-
-        // Aggiorna sempre i dati dal database per tutti i partecipanti
-        refreshPlayerData()
-
-        // Chiudi risultati dopo 5 secondi
-        setTimeout(() => setShowResults(false), 5000)
+        
+        // Evita doppia apertura del modale
+        if (!isResultsReady) {
+          setIsResultsReady(true)
+          
+          // Gestisci caso senza offerte
+          if (!payload.payload.winner && !payload.payload.allBids?.length) {
+            // Caso senza offerte - assegna al currentTurn per 1M
+            setAuctionResults({
+              ...payload.payload,
+              noOffers: true,
+              message: 'Nessuna offerta ricevuta'
+            })
+          } else {
+            // Caso normale con offerte
+            setAuctionResults(payload.payload)
+          }
+          
+          setShowResults(true)
+          
+          // Aggiorna sempre i dati dal database per tutti i partecipanti
+          refreshPlayerData()
+          
+          // Chiudi risultati dopo 5 secondi
+          setTimeout(() => {
+            setShowResults(false)
+            setIsResultsReady(false) // Reset per prossima asta
+          }, 5000)
+        }
       })
       .subscribe()
 
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [participant.id, refreshPlayerData, supabase])
+  }, [participant.id, refreshPlayerData, supabase, isResultsReady])
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -357,40 +380,54 @@ export default function ParticipantPortal({
 
           {auctionResults && (
             <div className="space-y-4 text-center">
-              <div>
-                <h3 className="text-xl font-bold">{auctionResults.player?.nome}</h3>
-                <Badge className="mt-1">{auctionResults.player?.ruolo}</Badge>
+              <div className="flex text-xl font-bold gap-1 justify-center items-center">
+                <Badge>{auctionResults.player?.ruolo}</Badge>
+                {auctionResults.player?.nome}
               </div>
 
-              <div>
-                <p className="text-lg">Vincitore:</p>
-                <p className="text-xl font-bold text-green-600">
-                  {auctionResults.winner?.display_name}
-                </p>
-                <p className="text-lg font-semibold">
-                  {auctionResults.winningBid}M
-                </p>
-              </div>
-
-              {auctionResults.allBids && (
-                <div className="text-left">
-                  <p className="font-medium mb-2">Tutte le offerte:</p>
-                  <div className="space-y-1 text-sm">
-                    {auctionResults.allBids.map((bid: any, index: number) => (
-                      <div key={index} className="flex justify-between items-center">
-                        <div className="flex-1">
-                          <span>{bid.participant_name}</span>
-                          {bid.timing_seconds && (
-                            <span className="text-xs text-gray-500 ml-2">
-                              ({bid.timing_seconds}s)
-                            </span>
-                          )}
-                        </div>
-                        <span className="font-medium">{bid.amount}M</span>
-                      </div>
-                    ))}
+              {auctionResults.noOffers ? (
+                // Caso senza offerte
+                <div className="space-y-3">
+                  <div className="font-bold text-orange-600">
+                    {auctionResults.message}
+                  </div>
+                  <div className="text-sm text-gray-600">
+                    Il calciatore è stato assegnato automaticamente a{' '}
+                    <span className="font-medium text-blue-600">
+                      {auctionResults.currentTurnParticipant?.display_name || 'Partecipante di turno'}
+                    </span>
+                    {' '}per 1M
                   </div>
                 </div>
+              ) : (
+                // Caso con offerte
+                <>
+                  <div className="font-bold text-green-600">
+                    Vincitore: {auctionResults.winner?.display_name}
+                    <Badge className="mt-1 bg-green-600">{auctionResults.winningBid}M</Badge>
+                  </div>
+
+                  {auctionResults.allBids && (
+                    <div className="text-left">
+                      <p className="font-medium mb-2">Tutte le offerte:</p>
+                      <div className="space-y-1 text-sm">
+                        {auctionResults.allBids.map((bid: any, index: number) => (
+                          <div key={index} className="flex justify-between items-center">
+                            <div className="flex-1">
+                              <span>{bid.participant_name}</span>
+                              {bid.timing_seconds && (
+                                <span className="text-xs text-gray-500 ml-2">
+                                  ({bid.timing_seconds}s)
+                                </span>
+                              )}
+                            </div>
+                            <span className="font-medium">{bid.amount}M</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
 
               <Button
@@ -404,6 +441,6 @@ export default function ParticipantPortal({
           )}
         </DialogContent>
       </Dialog>
-    </div>
+    </div >
   )
 }

@@ -14,6 +14,39 @@ export async function POST(request: NextRequest) {
 
     const supabase = await createClient()
     
+    // Recupera i dati della room per ottenere currentTurn
+    const { data: roomData, error: roomError } = await supabase
+      .from('rooms')
+      .select('current_turn')
+      .eq('id', roomId)
+      .single()
+    
+    if (roomError) {
+      console.error('Errore recupero room:', roomError)
+      return NextResponse.json(
+        { error: 'Errore recupero room' },
+        { status: 500 }
+      )
+    }
+
+    // Recupera i partecipanti per ottenere il nome del partecipante currentTurn
+    const { data: participants, error: participantsError } = await supabase
+      .from('participants')
+      .select('id, display_name, budget')
+      .eq('room_id', roomId)
+      .order('created_at', { ascending: true })
+    
+    if (participantsError) {
+      console.error('Errore recupero partecipanti:', participantsError)
+      return NextResponse.json(
+        { error: 'Errore recupero partecipanti' },
+        { status: 500 }
+      )
+    }
+
+    // Trova il partecipante currentTurn
+    const currentTurnParticipant = participants?.[roomData.current_turn] || null
+    
     // Recupera tutte le offerte per questo calciatore
     const { data: bids, error: bidsError } = await supabase
       .from('bids')
@@ -50,6 +83,7 @@ export async function POST(request: NextRequest) {
 
     let winner = null
     let winningBid = 0
+    let noOffers = false
     
     if (bids && bids.length > 0) {
       // Filtra offerte > 0
@@ -61,7 +95,6 @@ export async function POST(request: NextRequest) {
         winningBid = winner.amount
         
         // Assegna calciatore al vincitore
-        // Assegna il giocatore
         await supabase
           .from('players')
           .update({ 
@@ -90,6 +123,60 @@ export async function POST(request: NextRequest) {
             })
             .eq('id', winner.participant_id)
         }
+      } else {
+        // Caso con offerte ma tutte a 0 - assegna al currentTurn per 1M
+        noOffers = true
+        if (currentTurnParticipant) {
+          await supabase
+            .from('players')
+            .update({ 
+              is_assigned: true,
+              assigned_to: currentTurnParticipant.id,
+              purchase_price: 1
+            })
+            .eq('id', playerId)
+          
+          // Aggiorna budget del partecipante currentTurn
+          const newBudget = currentTurnParticipant.budget - 1
+          await supabase
+            .from('participants')
+            .update({ budget: newBudget })
+            .eq('id', currentTurnParticipant.id)
+          
+          // Imposta il vincitore come currentTurn per il payload
+          winner = {
+            participant_id: currentTurnParticipant.id,
+            participants: { display_name: currentTurnParticipant.display_name }
+          }
+          winningBid = 1
+        }
+      }
+    } else {
+      // Caso completamente senza offerte - assegna al currentTurn per 1M
+      noOffers = true
+      if (currentTurnParticipant) {
+        await supabase
+          .from('players')
+          .update({ 
+            is_assigned: true,
+            assigned_to: currentTurnParticipant.id,
+            purchase_price: 1
+          })
+          .eq('id', playerId)
+        
+        // Aggiorna budget del partecipante currentTurn
+        const newBudget = currentTurnParticipant.budget - 1
+        await supabase
+          .from('participants')
+          .update({ budget: newBudget })
+          .eq('id', currentTurnParticipant.id)
+        
+        // Imposta il vincitore come currentTurn per il payload
+        winner = {
+          participant_id: currentTurnParticipant.id,
+          participants: { display_name: currentTurnParticipant.display_name }
+        }
+        winningBid = 1
       }
     }
 
@@ -129,7 +216,13 @@ export async function POST(request: NextRequest) {
             participant_id: winner.participant_id
           } : null,
           winningBid,
-          allBids: allBidsData
+          allBids: allBidsData,
+          noOffers,
+          message: noOffers ? 'Nessuna offerta ricevuta' : undefined,
+          currentTurnParticipant: currentTurnParticipant ? {
+            display_name: currentTurnParticipant.display_name,
+            participant_id: currentTurnParticipant.id
+          } : null
         }
       })
 
@@ -151,7 +244,8 @@ export async function POST(request: NextRequest) {
       success: true,
       winner,
       winningBid,
-      totalBids: bids?.length || 0
+      totalBids: bids?.length || 0,
+      noOffers
     })
     
   } catch (error) {
