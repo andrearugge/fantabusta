@@ -217,7 +217,7 @@ export async function POST(request: NextRequest) {
           } : null,
           winningBid,
           allBids: allBidsData,
-          noOffers,
+          noOffers: noOffers, // Questo sarà true solo se non ci sono offerte valide
           message: noOffers ? 'Nessuna offerta ricevuta' : undefined,
           currentTurnParticipant: currentTurnParticipant ? {
             display_name: currentTurnParticipant.display_name,

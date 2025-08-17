@@ -174,17 +174,20 @@ export default function ParticipantPortal({
         if (!isResultsReady) {
           setIsResultsReady(true)
           
-          // Gestisci caso senza offerte
-          if (!payload.payload.winner && !payload.payload.allBids?.length) {
-            // Caso senza offerte - assegna al currentTurn per 1M
+          // Gestisci caso senza offerte basandosi sul flag noOffers dall'API
+          if (payload.payload.noOffers === true) {
+            // Caso senza offerte - assegnato al currentTurn per 1M
             setAuctionResults({
               ...payload.payload,
               noOffers: true,
-              message: 'Nessuna offerta ricevuta'
+              message: payload.payload.message || 'Nessuna offerta ricevuta'
             })
           } else {
-            // Caso normale con offerte
-            setAuctionResults(payload.payload)
+            // Caso normale con offerte valide
+            setAuctionResults({
+              ...payload.payload,
+              noOffers: false // Assicurati che sia esplicitamente false
+            })
           }
           
           setShowResults(true)
@@ -403,8 +406,7 @@ export default function ParticipantPortal({
                 // Caso con offerte
                 <>
                   <div className="font-bold text-green-600">
-                    Vincitore: {auctionResults.winner?.display_name}
-                    <Badge className="mt-1 bg-green-600">{auctionResults.winningBid}M</Badge>
+                    Vincitore: {auctionResults.winner?.display_name} <Badge className="ml-1 bg-green-600">{auctionResults.winningBid}M</Badge>
                   </div>
 
                   {auctionResults.allBids && (
