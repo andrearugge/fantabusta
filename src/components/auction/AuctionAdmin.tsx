@@ -28,7 +28,8 @@ interface ParticipantCardProps {
 function ParticipantCard({ participant, index, currentTurn, roomId }: ParticipantCardProps) {
   const [stats, setStats] = useState({ P: 0, D: 0, C: 0, A: 0, total: 0 })
   const supabase = createClient()
-  const isCurrentTurn = index === currentTurn
+  // CORREZIONE: turn_order è già 0-indexed, non serve sottrarre 1
+  const isCurrentTurn = participant.turn_order === currentTurn
 
   const fetchStats = useCallback(async () => {
     try {
@@ -125,12 +126,12 @@ export default function AuctionAdmin({
         console.error('Errore recupero room:', roomError)
       }
 
-      // Carica partecipanti con ordine fisso dal database
+      // Carica partecipanti ordinati per turn_order (dal 1 al numero più grande)
       const { data: participantsData, error: participantsError } = await supabase
         .from('participants')
         .select('*')
         .eq('room_id', room.id)
-        .order('created_at', { ascending: true })
+        .order('turn_order', { ascending: true })
 
       if (participantsError) {
         console.error('Errore recupero partecipanti:', participantsError)
@@ -516,11 +517,11 @@ export default function AuctionAdmin({
           </Button>
           
           <div className="grid gap-2 lg:grid-cols-2">
-            {participants.map((participant, index) => (
+            {participants.map((participant) => (
               <ParticipantCard
                 key={participant.id}
                 participant={participant}
-                index={index}
+                index={participant.turn_order - 1} // Converti turn_order (1-based) a index (0-based)
                 currentTurn={currentTurn}
                 roomId={room.id}
               />

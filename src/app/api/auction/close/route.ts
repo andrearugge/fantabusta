@@ -32,9 +32,9 @@ export async function POST(request: NextRequest) {
     // Recupera i partecipanti per ottenere il nome del partecipante currentTurn
     const { data: participants, error: participantsError } = await supabase
       .from('participants')
-      .select('id, display_name, budget')
+      .select('id, display_name, budget, turn_order')
       .eq('room_id', roomId)
-      .order('created_at', { ascending: true })
+      .order('turn_order', { ascending: true })
     
     if (participantsError) {
       console.error('Errore recupero partecipanti:', participantsError)
@@ -44,8 +44,9 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Trova il partecipante currentTurn
-    const currentTurnParticipant = participants?.[roomData.current_turn] || null
+    // Trova il partecipante currentTurn usando turn_order con modulo corretto
+    const participantTurnOrder = roomData.current_turn % participants.length
+    const currentTurnParticipant = participants?.find(p => p.turn_order === participantTurnOrder) || null
     
     // Recupera tutte le offerte per questo calciatore
     const { data: bids, error: bidsError } = await supabase
