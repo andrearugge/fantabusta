@@ -73,6 +73,7 @@ export interface Database {
           squadra: string
           is_assigned: boolean
           assigned_to: string | null
+          purchase_price: number
           created_at: string
         }
         Insert: {
@@ -83,6 +84,7 @@ export interface Database {
           squadra: string
           is_assigned?: boolean
           assigned_to?: string | null
+          purchase_price?: number
           created_at?: string
         }
         Update: {
@@ -93,6 +95,7 @@ export interface Database {
           squadra?: string
           is_assigned?: boolean
           assigned_to?: string | null
+          purchase_price?: number
           created_at?: string
         }
       }

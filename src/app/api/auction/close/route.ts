@@ -61,11 +61,13 @@ export async function POST(request: NextRequest) {
         winningBid = winner.amount
         
         // Assegna calciatore al vincitore
+        // Assegna il giocatore
         await supabase
           .from('players')
-          .update({
+          .update({ 
             is_assigned: true,
-            assigned_to: winner.participant_id
+            assigned_to: winner.participant_id,
+            purchase_price: winningBid
           })
           .eq('id', playerId)
         
@@ -132,10 +134,10 @@ export async function POST(request: NextRequest) {
       })
 
     // Cancellazione offerte
-    // await supabase
-    //   .from('bids')
-    //   .delete()
-    //   .eq('player_id', playerId)
+    await supabase
+      .from('bids')
+      .delete()
+      .eq('player_id', playerId)
 
     return NextResponse.json({
       success: true,

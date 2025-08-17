@@ -147,10 +147,10 @@ async function closeAuction(roomId: string, playerId: string) {
     })
 
   // Cancella le offerte
-  // await supabase
-  //   .from('bids')
-  //   .delete()
-  //   .eq('player_id', playerId)
+  await supabase
+    .from('bids')
+    .delete()
+    .eq('player_id', playerId)
 }
 
 // Funzione per gestire timer server-side

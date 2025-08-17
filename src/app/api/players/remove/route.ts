@@ -30,17 +30,24 @@ export async function POST(request: NextRequest) {
     }
 
     // Recupera il prezzo di acquisto dalle offerte
-    const { data: winningBid } = await supabase
-      .from('bids')
-      .select('amount')
-      .eq('player_id', playerId)
-      .eq('participant_id', participantId)
-      .order('amount', { ascending: false })
-      .order('created_at', { ascending: true })
-      .limit(1)
-      .maybeSingle()
+    // Sostituisci la logica di recupero del prezzo dalle bid
+    // con il prezzo salvato direttamente nel giocatore
     
-    const refundAmount = winningBid?.amount || 0
+    // RIMUOVI questo blocco:
+    // const { data: winningBid } = await supabase
+    //   .from('bids')
+    //   .select('amount')
+    //   .eq('player_id', playerId)
+    //   .eq('participant_id', participantId)
+    //   .order('amount', { ascending: false })
+    //   .order('created_at', { ascending: true })
+    //   .limit(1)
+    //   .maybeSingle()
+    // 
+    // const refundAmount = winningBid?.amount || 0
+    
+    // SOSTITUISCI con:
+    const refundAmount = player.purchase_price || 0
 
     // Recupera il budget attuale del partecipante
     const { data: participant } = await supabase
@@ -61,7 +68,8 @@ export async function POST(request: NextRequest) {
       .from('players')
       .update({
         is_assigned: false,
-        assigned_to: null
+        assigned_to: null,
+        purchase_price: 0
       })
       .eq('id', playerId)
     
@@ -71,6 +79,17 @@ export async function POST(request: NextRequest) {
         { error: 'Errore rimozione giocatore' },
         { status: 500 }
       )
+    }
+
+    // AGGIUNGI QUESTA SEZIONE: Cancella tutte le bid relative a questo giocatore
+    const { error: bidsError } = await supabase
+      .from('bids')
+      .delete()
+      .eq('player_id', playerId)
+    
+    if (bidsError) {
+      console.error('Errore cancellazione bid:', bidsError)
+      // Non bloccare l'operazione per questo errore, ma logga
     }
 
     // Restituisci i crediti al partecipante

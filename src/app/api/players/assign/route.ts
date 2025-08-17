@@ -69,7 +69,8 @@ export async function POST(request: NextRequest) {
       .from('players')
       .update({
         is_assigned: true,
-        assigned_to: participantId
+        assigned_to: participantId,
+        purchase_price: price
       })
       .eq('id', playerId)
     

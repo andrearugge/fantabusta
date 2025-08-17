@@ -30,9 +30,27 @@ export default function TeamsView({
   const [isRemoving, setIsRemoving] = useState<string | null>(null)
   const [localAssignedPlayers, setLocalAssignedPlayers] = useState(assignedPlayers)
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false)
+  const [localParticipants, setLocalParticipants] = useState(participants)
   const supabase = createClient()
 
-  const teamsByParticipant = participants.map(participant => {
+  const refreshParticipants = async () => {
+    try {
+      const { data: updatedParticipants } = await supabase
+        .from('participants')
+        .select('*')
+        .eq('room_id', room.id)
+        .order('display_name')
+      
+      if (updatedParticipants) {
+        setLocalParticipants(updatedParticipants)
+      }
+    } catch (error) {
+      console.error('Errore ricaricamento partecipanti:', error)
+    }
+  }
+
+  // Usa localParticipants invece di participants
+  const teamsByParticipant = localParticipants.map(participant => {
     const playersByRole = localAssignedPlayers.filter(p => p.assigned_to === participant.id)
     
     const teamData = {
@@ -65,9 +83,13 @@ export default function TeamsView({
       const result = await response.json()
       
       if (response.ok) {
+        // Aggiorna i giocatori locali
         setLocalAssignedPlayers(prev => 
           prev.filter(p => p.id !== playerId)
         )
+        
+        // AGGIUNGI: Ricarica i dati dei partecipanti dal database
+        await refreshParticipants()
       } else {
         console.error('Errore rimozione:', result.error)
         alert('Errore durante la rimozione del giocatore')

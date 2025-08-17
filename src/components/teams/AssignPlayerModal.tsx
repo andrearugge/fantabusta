@@ -35,7 +35,7 @@ export default function AssignPlayerModal({
   const [selectedParticipant, setSelectedParticipant] = useState<string>('')
   const [price, setPrice] = useState<string>('')
   const [isAssigning, setIsAssigning] = useState(false)
-  
+
   const supabase = createClient()
 
   // Carica giocatori disponibili
@@ -63,20 +63,20 @@ export default function AssignPlayerModal({
       .eq('room_id', room.id)
       .eq('is_assigned', false)
       .order('nome')
-    
+
     setAvailablePlayers(data || [])
   }
 
   const toggleRole = (role: string) => {
-    setSelectedRoles(prev => 
-      prev.includes(role) 
+    setSelectedRoles(prev =>
+      prev.includes(role)
         ? prev.filter(r => r !== role)
         : [...prev, role]
     )
   }
 
   const toggleAllRoles = () => {
-    setSelectedRoles(prev => 
+    setSelectedRoles(prev =>
       prev.length === 4 ? [] : ['P', 'D', 'C', 'A']
     )
   }
@@ -94,7 +94,7 @@ export default function AssignPlayerModal({
     }
 
     setIsAssigning(true)
-    
+
     try {
       const response = await fetch('/api/players/assign', {
         method: 'POST',
@@ -105,9 +105,9 @@ export default function AssignPlayerModal({
           price: priceNum
         })
       })
-      
+
       const result = await response.json()
-      
+
       if (response.ok) {
         alert(result.message)
         onPlayerAssigned()
@@ -136,12 +136,10 @@ export default function AssignPlayerModal({
         <DialogHeader>
           <DialogTitle>Assegna Calciatore</DialogTitle>
         </DialogHeader>
-        
+
         <div className="space-y-6">
           {/* Selezione Giocatore */}
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Seleziona Calciatore</h3>
-            
             <Input
               placeholder="Cerca per nome o squadra..."
               value={searchTerm}
@@ -149,7 +147,7 @@ export default function AssignPlayerModal({
             />
 
             {/* Filtri per ruolo */}
-            <div className="space-y-2">
+            {/* <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label className="text-sm font-medium">Filtra per ruolo:</Label>
                 <Button
@@ -177,17 +175,16 @@ export default function AssignPlayerModal({
                   </label>
                 ))}
               </div>
-            </div>
+            </div> */}
 
             <div className="max-h-60 overflow-y-auto space-y-2 border rounded-lg p-2">
               {filteredPlayers.map((player) => (
                 <div
                   key={player.id}
-                  className={`flex items-center justify-between p-3 border rounded-lg cursor-pointer transition-colors ${
-                    selectedPlayer?.id === player.id 
-                      ? 'bg-blue-50 border-blue-300' 
+                  className={`flex items-center justify-between p-3 border rounded-lg cursor-pointer transition-colors ${selectedPlayer?.id === player.id
+                      ? 'bg-blue-50 border-blue-300'
                       : 'hover:bg-gray-50'
-                  }`}
+                    }`}
                   onClick={() => setSelectedPlayer(player)}
                 >
                   <div>
@@ -210,11 +207,9 @@ export default function AssignPlayerModal({
           {/* Dettagli Assegnazione */}
           {selectedPlayer && (
             <Card>
-              <CardContent className="pt-6 space-y-4">
-                <h3 className="text-lg font-semibold">Dettagli Assegnazione</h3>
-                
+              <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
-                  <div>
+                  <div className="col-span-2 lg:col-span-1 space-y-1">
                     <Label htmlFor="participant">Partecipante</Label>
                     <Select value={selectedParticipant} onValueChange={setSelectedParticipant}>
                       <SelectTrigger>
@@ -229,8 +224,8 @@ export default function AssignPlayerModal({
                       </SelectContent>
                     </Select>
                   </div>
-                  
-                  <div>
+
+                  <div className="col-span-2 lg:col-span-1 space-y-1">
                     <Label htmlFor="price">Prezzo (M)</Label>
                     <Input
                       id="price"
@@ -269,7 +264,7 @@ export default function AssignPlayerModal({
           <Button variant="outline" onClick={handleClose}>
             Annulla
           </Button>
-          <Button 
+          <Button
             onClick={handleAssign}
             disabled={!selectedPlayer || !selectedParticipant || !price || isAssigning}
           >
