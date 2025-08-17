@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -25,70 +25,41 @@ export default function AuctionAdmin({
   players,
   assignedPlayers
 }: AuctionAdminProps) {
-  // Aggiungi stato locale per i partecipanti
+  // Stati del componente
   const [participants, setParticipants] = useState(initialParticipants)
-  
   const [searchTerm, setSearchTerm] = useState('')
   const [currentTurn, setCurrentTurn] = useState(0)
   const [timeRemaining, setTimeRemaining] = useState(0)
   const [isAuctionActive, setIsAuctionActive] = useState(false)
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null)
-  // Aggiungi stato per i filtri ruolo
   const [selectedRoles, setSelectedRoles] = useState<string[]>(['P', 'D', 'C', 'A'])
-  // Aggiungi stato locale per i giocatori
   const [localPlayers, setLocalPlayers] = useState<Player[]>(players)
 
   const supabase = createClient()
 
-  // Aggiorna i giocatori disponibili basandosi sullo stato locale
-  const availablePlayers = localPlayers.filter(p => !p.is_assigned)
-  const filteredPlayers = availablePlayers.filter(p => {
-    // Filtro per nome/squadra
-    const matchesSearch = p.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.squadra.toLowerCase().includes(searchTerm.toLowerCase())
-
-    // Filtro per ruolo
-    const matchesRole = selectedRoles.includes(p.ruolo)
-
-    // AND tra i due filtri
-    return matchesSearch && matchesRole
-  })
-
-  const currentParticipant = useMemo(() => {
-    return participants[currentTurn]
-  }, [participants, currentTurn])
-
-  // Funzione per gestire il toggle dei ruoli
-  const toggleRole = (role: string) => {
-    setSelectedRoles(prev =>
-      prev.includes(role)
-        ? prev.filter(r => r !== role)
-        : [...prev, role]
-    )
-  }
-
-  // Funzione per selezionare/deselezionare tutti i ruoli
-  const toggleAllRoles = () => {
-    setSelectedRoles(prev =>
-      prev.length === 4 ? [] : ['P', 'D', 'C', 'A']
-    )
-  }
-
-  // Subscription realtime per aggiornamenti asta
-  useEffect(() => {
-    const channel = supabase
-      .channel('auction_events')
-      .on('broadcast', { event: 'auction_closed' }, (payload) => {
-        const { player, winner, winningBid } = payload.payload
-      })
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(channel)
+  // Funzione per aggiornare i budget dei partecipanti
+  const refreshParticipantsBudgets = useCallback(async () => {
+    try {
+      const { data: updatedParticipants, error } = await supabase
+        .from('participants')
+        .select('id, budget')
+        .eq('room_id', room.id)
+      
+      if (error) {
+        console.error('Errore recupero budget:', error)
+        return
+      }
+      
+      setParticipants(prev => prev.map(p => {
+        const updated = updatedParticipants?.find(up => up.id === p.id)
+        return updated ? { ...p, budget: updated.budget } : p
+      }))
+    } catch (error) {
+      console.error('Errore refresh budget:', error)
     }
-  }, [room.id])
+  }, [supabase, room.id])
 
-  // Subscription realtime per aggiornamenti asta - UNIFICA TUTTO QUI
+  // Gestione eventi realtime unificata
   useEffect(() => {
     const channel = supabase
       .channel('auction_events')
@@ -106,84 +77,64 @@ export default function AuctionAdmin({
         setSelectedPlayer(null)
         setTimeRemaining(0)
         
-        // Aggiungi questa funzione per recuperare i budget aggiornati
-        const refreshParticipantsBudgets = async () => {
-          try {
-            const { data: updatedParticipants, error } = await supabase
-              .from('participants')
-              .select('id, budget')
-              .eq('room_id', room.id)
-            
-            if (error) {
-              console.error('Errore recupero budget:', error)
-              return
-            }
-            
-            // Aggiorna solo i budget nello stato locale
-            setParticipants(prev => prev.map(p => {
-              const updated = updatedParticipants?.find(up => up.id === p.id)
-              return updated ? { ...p, budget: updated.budget } : p
-            }))
-          } catch (error) {
-            console.error('Errore refresh budget:', error)
-          }
-        }
-    
-        // Modifica il useEffect esistente per includere il refresh dei budget
-        useEffect(() => {
-          const channel = supabase
-            .channel('auction_events')
-            .on('broadcast', { event: 'timer_update' }, (payload) => {
-              setTimeRemaining(payload.payload.timeRemaining)
-            })
-            .on('broadcast', { event: 'turn_changed' }, (payload) => {
-              setCurrentTurn(payload.payload.newTurn)
-            })
-            .on('broadcast', { event: 'auction_closed' }, async (payload) => {
-              const { player, winner, winningBid } = payload.payload
-    
-              // Gestisci chiusura asta
-              setIsAuctionActive(false)
-              setSelectedPlayer(null)
-              setTimeRemaining(0)
-              
-              // SOSTITUISCI il calcolo locale con il refresh dal database
-              await refreshParticipantsBudgets()
-            })
-            .subscribe()
-    
-          return () => {
-            supabase.removeChannel(channel)
-          }
-        }, [room.id])
-    
-        // Aggiungi anche un refresh periodico ogni 30 secondi per sicurezza
-        useEffect(() => {
-          const interval = setInterval(() => {
-            refreshParticipantsBudgets()
-          }, 30000) // 30 secondi
-    
-          return () => clearInterval(interval)
-        }, [room.id])
-        
-        // AGGIUNGI: Aggiorna il budget del vincitore
-        if (winner && winningBid > 0) {
-          setParticipants(prev => prev.map(p => 
-            p.id === winner.participant_id 
-              ? { ...p, budget: p.budget - winningBid }
-              : p
-          ))
-        }
+        // Refresh dal database
+        await refreshParticipantsBudgets()
       })
       .subscribe()
 
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [room.id])
+  }, [room.id, supabase, refreshParticipantsBudgets])
 
-  const getParticipantStats = (participant: Participant) => {
-    // Usa assignedPlayers invece di localAssignedPlayers
+  // Refresh periodico dei budget
+  useEffect(() => {
+    const interval = setInterval(() => {
+      refreshParticipantsBudgets()
+    }, 30000) // 30 secondi
+
+    return () => clearInterval(interval)
+  }, [refreshParticipantsBudgets])
+
+  // Calcoli derivati
+  const availablePlayers = useMemo(() => 
+    localPlayers.filter(p => !p.is_assigned), 
+    [localPlayers]
+  )
+
+  const filteredPlayers = useMemo(() => {
+    return availablePlayers.filter(p => {
+      // Filtro per nome/squadra
+      const matchesSearch = p.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        p.squadra.toLowerCase().includes(searchTerm.toLowerCase())
+
+      // Filtro per ruolo
+      const matchesRole = selectedRoles.includes(p.ruolo)
+
+      return matchesSearch && matchesRole
+    })
+  }, [availablePlayers, searchTerm, selectedRoles])
+
+  const currentParticipant = useMemo(() => {
+    return participants[currentTurn]
+  }, [participants, currentTurn])
+
+  // Funzioni di gestione
+  const toggleRole = useCallback((role: string) => {
+    setSelectedRoles(prev =>
+      prev.includes(role)
+        ? prev.filter(r => r !== role)
+        : [...prev, role]
+    )
+  }, [])
+
+  const toggleAllRoles = useCallback(() => {
+    setSelectedRoles(prev =>
+      prev.length === 4 ? [] : ['P', 'D', 'C', 'A']
+    )
+  }, [])
+
+  const getParticipantStats = useCallback((participant: Participant) => {
     const playersByRole = assignedPlayers.filter(p => p.assigned_to === participant.id)
     return {
       P: playersByRole.filter(p => p.ruolo === 'P').length,
@@ -192,96 +143,87 @@ export default function AuctionAdmin({
       A: playersByRole.filter(p => p.ruolo === 'A').length,
       total: playersByRole.length
     }
-  }
+  }, [assignedPlayers])
 
-  // Timer countdown
-  useEffect(() => {
-    const channel = supabase
-      .channel('auction_events')
-      .on('broadcast', { event: 'timer_update' }, (payload) => {
-        setTimeRemaining(payload.payload.timeRemaining)
-      })
-      .on('broadcast', { event: 'auction_closed' }, (payload) => {
-        // Gestisci chiusura asta
-        setIsAuctionActive(false)
-        setSelectedPlayer(null)
-        setTimeRemaining(0)
-
-        // Aggiorna liste locali
-        const { player, winner, winningBid } = payload.payload
-      })
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [])
-
-  const startAuction = async (player: Player) => {
+  const startAuction = useCallback(async (player: Player) => {
     setSelectedPlayer(player)
     setIsAuctionActive(true)
 
-    await fetch('/api/auction/start', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        roomId: room.id,
-        playerId: player.id,
-        currentTurn
+    try {
+      await fetch('/api/auction/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          roomId: room.id,
+          playerId: player.id,
+          currentTurn
+        })
       })
-    })
-  }
+    } catch (error) {
+      console.error('Errore avvio asta:', error)
+      setIsAuctionActive(false)
+      setSelectedPlayer(null)
+    }
+  }, [room.id, currentTurn])
 
-  const handleCloseAuction = async () => {
+  const handleCloseAuction = useCallback(async () => {
     if (!selectedPlayer) return
 
     setIsAuctionActive(false)
 
-    await fetch('/api/auction/close', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        roomId: room.id,
-        playerId: selectedPlayer.id
+    try {
+      await fetch('/api/auction/close', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          roomId: room.id,
+          playerId: selectedPlayer.id
+        })
       })
-    })
 
-    // Calcola il nuovo turno
+      // Calcola il nuovo turno
+      const newTurn = (currentTurn + 1) % participants.length
+
+      // Aggiorna localmente
+      setCurrentTurn(newTurn)
+      setSelectedPlayer(null)
+
+      // Broadcast del cambio turno a tutti i client
+      await supabase
+        .channel('auction_events')
+        .send({
+          type: 'broadcast',
+          event: 'turn_changed',
+          payload: {
+            newTurn,
+            currentParticipant: participants[newTurn]
+          }
+        })
+    } catch (error) {
+      console.error('Errore chiusura asta:', error)
+    }
+  }, [selectedPlayer, room.id, currentTurn, participants, supabase])
+
+  const skipTurn = useCallback(async () => {
     const newTurn = (currentTurn + 1) % participants.length
-
-    // Aggiorna localmente
-    setCurrentTurn(newTurn)
-    setSelectedPlayer(null)
-
-    // Broadcast del cambio turno a tutti i client
-    await supabase
-      .channel('auction_events')
-      .send({
-        type: 'broadcast',
-        event: 'turn_changed',
-        payload: {
-          newTurn,
-          currentParticipant: participants[newTurn]
-        }
-      })
-  }
-
-  const skipTurn = async () => {
-    const newTurn = (currentTurn + 1) % participants.length
     setCurrentTurn(newTurn)
 
-    // Broadcast del cambio turno
-    await supabase
-      .channel('auction_events')
-      .send({
-        type: 'broadcast',
-        event: 'turn_changed',
-        payload: {
-          newTurn,
-          currentParticipant: participants[newTurn]
-        }
-      })
-  }
+    try {
+      // Broadcast del cambio turno
+      await supabase
+        .channel('auction_events')
+        .send({
+          type: 'broadcast',
+          event: 'turn_changed',
+          payload: {
+            newTurn,
+            currentParticipant: participants[newTurn]
+          }
+        })
+    } catch (error) {
+      console.error('Errore skip turno:', error)
+    }
+  }, [currentTurn, participants, supabase])
 
   return (
     <div className="lg:h-[90vh] lg:overflow-y">
@@ -381,10 +323,11 @@ export default function AuctionAdmin({
                         {['P', 'D', 'C', 'A'].map((role) => (
                           <label
                             key={role}
-                            className={`flex items-center space-x-2 cursor-pointer px-2 py-1 rounded-sm border transition-all duration-200 ${selectedRoles.includes(role)
-                              ? 'bg-blue-100 border-blue-500 text-blue-700'
-                              : 'bg-gray-50 border-gray-300 text-gray-700 hover:bg-gray-100'
-                              }`}
+                            className={`flex items-center space-x-2 cursor-pointer px-2 py-1 rounded-sm border transition-all duration-200 ${
+                              selectedRoles.includes(role)
+                                ? 'bg-blue-100 border-blue-500 text-blue-700'
+                                : 'bg-gray-50 border-gray-300 text-gray-700 hover:bg-gray-100'
+                            }`}
                             onClick={() => toggleRole(role)}
                           >
                             <input
@@ -394,7 +337,9 @@ export default function AuctionAdmin({
                               className="sr-only"
                             />
                             <span className="text-sm font-medium">{role}</span>
-                            <span className="text-sm font-medium">{availablePlayers.filter(p => p.ruolo === role).length}</span>
+                            <span className="text-sm font-medium">
+                              {availablePlayers.filter(p => p.ruolo === role).length}
+                            </span>
                           </label>
                         ))}
                       </div>
@@ -466,8 +411,9 @@ export default function AuctionAdmin({
               return (
                 <div
                   key={participant.id}
-                  className={`p-3 border rounded-lg ${isCurrentTurn ? ' border-blue-500 bg-blue-50' : 'bg-white'
-                    }`}
+                  className={`p-3 border rounded-lg ${
+                    isCurrentTurn ? ' border-blue-500 bg-blue-50' : 'bg-white'
+                  }`}
                 >
                   <div className="flex justify-between items-start mb-2">
                     <p className="font-medium">{participant.display_name}</p>
