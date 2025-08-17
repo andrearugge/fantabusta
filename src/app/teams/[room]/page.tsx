@@ -32,7 +32,7 @@ export default async function TeamsPage({ params }: TeamsPageProps) {
     .order('display_name')
 
   // Recupera calciatori assegnati con partecipanti
-  const { data: assignedPlayersData } = await supabase
+  const { data: assignedPlayers } = await supabase
     .from('players')
     .select(`
       *,
@@ -44,26 +44,6 @@ export default async function TeamsPage({ params }: TeamsPageProps) {
     .eq('room_id', roomData.id)
     .eq('is_assigned', true)
     .not('assigned_to', 'is', null)
-
-  // Per ogni giocatore assegnato, recupera l'offerta vincente
-  const assignedPlayers = await Promise.all(
-    (assignedPlayersData || []).map(async (player) => {
-      const { data: winningBid } = await supabase
-        .from('bids')
-        .select('amount')
-        .eq('player_id', player.id)
-        .eq('participant_id', player.assigned_to)
-        .order('amount', { ascending: false })
-        .order('created_at', { ascending: true })
-        .limit(1)
-        .maybeSingle()
-      
-      return {
-        ...player,
-        purchase_price: winningBid?.amount || 0
-      }
-    })
-  )
 
   return (
     <div className="min-h-screen bg-gray-50 bg-gray-50">
