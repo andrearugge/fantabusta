@@ -45,12 +45,12 @@ export default function AuctionAdmin({
         .from('rooms')
         .update({ current_turn: newTurn })
         .eq('id', room.id)
-      
+
       if (error) {
         console.error('Errore aggiornamento turno:', error)
         return false
       }
-      
+
       setCurrentTurn(newTurn)
       return true
     } catch (error) {
@@ -66,12 +66,12 @@ export default function AuctionAdmin({
         .from('participants')
         .select('id, budget')
         .eq('room_id', room.id)
-      
+
       if (error) {
         console.error('Errore recupero budget:', error)
         return
       }
-      
+
       setParticipants(prev => prev.map(p => {
         const updated = updatedParticipants?.find(up => up.id === p.id)
         return updated ? { ...p, budget: updated.budget } : p
@@ -84,9 +84,9 @@ export default function AuctionAdmin({
   // Funzione per chiudere l'asta
   const handleCloseAuction = useCallback(async () => {
     if (!selectedPlayer) return
-  
+
     setIsAuctionActive(false)
-  
+
     try {
       await fetch('/api/auction/close', {
         method: 'POST',
@@ -96,16 +96,16 @@ export default function AuctionAdmin({
           playerId: selectedPlayer.id
         })
       })
-  
+
       // Calcola il nuovo turno
       const newTurn = (currentTurn + 1) % participants.length
-  
+
       // Aggiorna nel database
       const success = await updateTurnInDatabase(newTurn)
-      
+
       if (success) {
         setSelectedPlayer(null)
-  
+
         // Broadcast del cambio turno a tutti i client
         await supabase
           .channel('auction_events')
@@ -126,9 +126,9 @@ export default function AuctionAdmin({
   // Funzione per saltare il turno
   const skipTurn = useCallback(async () => {
     const newTurn = (currentTurn + 1) % participants.length
-    
+
     const success = await updateTurnInDatabase(newTurn)
-    
+
     if (success) {
       try {
         // Broadcast del cambio turno
@@ -205,7 +205,7 @@ export default function AuctionAdmin({
           .select('current_turn')
           .eq('id', room.id)
           .single()
-        
+
         if (roomData && roomData.current_turn !== currentTurn) {
           setCurrentTurn(roomData.current_turn)
         }
@@ -213,13 +213,13 @@ export default function AuctionAdmin({
         console.error('Errore sync turno:', error)
       }
     }
-  
+
     // Sincronizza all'avvio
     syncTurnFromDatabase()
-  
+
     // Sincronizza periodicamente
     const interval = setInterval(syncTurnFromDatabase, 10000) // ogni 10 secondi
-  
+
     return () => clearInterval(interval)
   }, [supabase, room.id, currentTurn])
 
@@ -240,7 +240,7 @@ export default function AuctionAdmin({
         setIsAuctionActive(false)
         setSelectedPlayer(null)
         setTimeRemaining(0)
-        
+
         // Refresh dal database
         await refreshParticipantsBudgets()
       })
@@ -261,8 +261,8 @@ export default function AuctionAdmin({
   }, [refreshParticipantsBudgets])
 
   // Calcoli derivati
-  const availablePlayers = useMemo(() => 
-    localPlayers.filter(p => !p.is_assigned), 
+  const availablePlayers = useMemo(() =>
+    localPlayers.filter(p => !p.is_assigned),
     [localPlayers]
   )
 
@@ -313,18 +313,18 @@ export default function AuctionAdmin({
 
             {/* Timer e controlli */}
             {isAuctionActive && selectedPlayer && (
-              <Card className="border-2 border-red-500">
+              <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Clock className="h-5 w-5" />
-                    Asta in corso: {selectedPlayer.nome}
+                    Asta in corso
                   </CardTitle>
-                  <CardDescription>
-                    {selectedPlayer.ruolo} - {selectedPlayer.squadra}
-                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
+                    <div className="p-2 border border-blue-500 rounded-sm bg-blue-50 text-blue-600 text-center font-medium">
+                      {selectedPlayer.nome} - {selectedPlayer.ruolo} - {selectedPlayer.squadra}
+                    </div>
                     <AuctionTimer
                       initialTime={parseInt(process.env.NEXT_PUBLIC_TIMER || '30')}
                       isActive={isAuctionActive}
@@ -334,7 +334,7 @@ export default function AuctionAdmin({
                     />
                     <Button
                       onClick={handleCloseAuction}
-                      variant="destructive"
+                      variant="outline"
                       className="w-full"
                     >
                       Chiudi Asta
@@ -381,11 +381,10 @@ export default function AuctionAdmin({
                         {['P', 'D', 'C', 'A'].map((role) => (
                           <label
                             key={role}
-                            className={`flex items-center space-x-2 cursor-pointer px-2 py-1 rounded-sm border transition-all duration-200 ${
-                              selectedRoles.includes(role)
-                                ? 'bg-blue-100 border-blue-500 text-blue-700'
-                                : 'bg-gray-50 border-gray-300 text-gray-700 hover:bg-gray-100'
-                            }`}
+                            className={`flex items-center space-x-2 cursor-pointer px-2 py-1 rounded-sm border transition-all duration-200 ${selectedRoles.includes(role)
+                              ? 'bg-blue-100 border-blue-500 text-blue-700'
+                              : 'bg-gray-50 border-gray-300 text-gray-700 hover:bg-gray-100'
+                              }`}
                             onClick={() => toggleRole(role)}
                           >
                             <input
@@ -469,9 +468,8 @@ export default function AuctionAdmin({
               return (
                 <div
                   key={participant.id}
-                  className={`p-3 border rounded-lg ${
-                    isCurrentTurn ? ' border-blue-500 bg-blue-50' : 'bg-white'
-                  }`}
+                  className={`p-3 border rounded-lg ${isCurrentTurn ? ' border-blue-500 bg-blue-50' : 'bg-white'
+                    }`}
                 >
                   <div className="flex justify-between items-start mb-2">
                     <p className="font-medium">{participant.display_name}</p>

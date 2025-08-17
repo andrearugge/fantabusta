@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -23,143 +23,96 @@ export default function ParticipantPortal({
   myPlayers,
   playerCounts
 }: ParticipantPortalProps) {
+  // Stati per l'asta corrente
   const [currentAuction, setCurrentAuction] = useState<any>(null)
   const [bidAmount, setBidAmount] = useState('')
   const [timeRemaining, setTimeRemaining] = useState(0)
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  // Stati per i risultati dell'asta
   const [showResults, setShowResults] = useState(false)
   const [auctionResults, setAuctionResults] = useState<any>(null)
-  const [bidConfirmation, setBidConfirmation] = useState<{ show: boolean; amount: number }>({ show: false, amount: 0 })
 
-  // Aggiungi stato locale per dati che si aggiornano
+  // Stati per la conferma dell'offerta
+  const [hasMadeBid, setHasMadeBid] = useState(false)
+  const [lastBidAmount, setLastBidAmount] = useState(0)
+
+  // Stati locali per dati che si aggiornano in tempo reale
   const [localParticipant, setLocalParticipant] = useState(participant)
   const [localMyPlayers, setLocalMyPlayers] = useState<Player[]>(myPlayers)
   const [localPlayerCounts, setLocalPlayerCounts] = useState(playerCounts)
 
   const supabase = createClient()
 
-  // Calcola il budget massimo disponibile per un'offerta
-  const calculateMaxBudget = () => {
-    // Calcola il numero totale di giocatori attualmente posseduti
-    const totalPlayersOwned = localMyPlayers.length
-
-    // Calcola il numero di slot ancora liberi (25 è il totale della rosa)
-    const remainingSlots = 25 - totalPlayersOwned
-
-    // Il budget massimo è il budget attuale meno gli slot ancora liberi
-    // (ogni slot libero richiede almeno 1M per essere riempito)
-    return Math.max(1, localParticipant.budget - remainingSlots)
-  }
-
-  const maxBudget = calculateMaxBudget()
-  const canBidForRole = (role: string) => {
-    if (!role) {
-      return false
-    }
-
-    const limits = { P: 3, D: 8, C: 8, A: 6 }
-    const currentCount = localPlayerCounts[role as keyof typeof localPlayerCounts] // Usa i conteggi locali
-    const limit = limits[role as keyof typeof limits]
-    return currentCount < limit
-  }
-
   // Funzione per aggiornare i conteggi dei ruoli
-  const updatePlayerCounts = (players: Player[]) => {
+  const updatePlayerCounts = useCallback((players: Player[]) => {
     return {
       P: players.filter(p => p.ruolo === 'P').length,
       D: players.filter(p => p.ruolo === 'D').length,
       C: players.filter(p => p.ruolo === 'C').length,
       A: players.filter(p => p.ruolo === 'A').length
     }
-  }
+  }, [])
 
-  // Realtime subscriptions
-  useEffect(() => {
-    const channel = supabase
-      .channel('auction_events')
-      .on('broadcast', { event: 'player_selected' }, (payload) => {
-        setCurrentAuction(payload.payload)
-        // Usa il timestamp per calcolare il tempo rimanente
-        const { auctionEndTime } = payload.payload
-        const timeLeft = Math.max(0, Math.ceil((auctionEndTime - Date.now()) / 1000))
-        setTimeRemaining(timeLeft)
-        setBidAmount('')
-        setShowResults(false)
-        setHasMadeBid(false)
-        setLastBidAmount(0)
-      })
-      .on('broadcast', { event: 'timer_update' }, (payload) => {
-        setTimeRemaining(payload.payload.timeRemaining)
-      })
-      .on('broadcast', { event: 'auction_closed' }, (payload) => {
-        setCurrentAuction(null)
-        setTimeRemaining(0)
-        setAuctionResults(payload.payload)
-        setShowResults(true)
+  // Funzione per ricaricare i dati dal database
+  const refreshPlayerData = useCallback(async () => {
+    try {
+      // Ricarica i giocatori assegnati al partecipante
+      const { data: playersData, error: playersError } = await supabase
+        .from('players')
+        .select('*, purchase_price')
+        .eq('assigned_to', participant.id)
 
-        // Aggiorna i dati locali se questo partecipante ha vinto
-        const { player, winner, winningBid } = payload.payload
-        if (winner && winner.participant_id === participant.id) {
-          // Aggiorna budget
-          setLocalParticipant(prev => ({
-            ...prev,
-            budget: prev.budget - winningBid
-          }))
+      if (playersError) {
+        console.error('Errore nel caricamento giocatori:', playersError)
+        return
+      }
 
-          // Aggiungi il giocatore alla squadra SOLO se non è già presente
-          setLocalMyPlayers(prev => {
-            // Verifica se il giocatore è già presente
-            const playerExists = prev.some(p => p.id === player.id)
-            if (playerExists) {
-              return prev // Non aggiungere duplicati
-            }
+      // Ricarica il budget del partecipante
+      const { data: participantData, error: participantError } = await supabase
+        .from('participants')
+        .select('budget')
+        .eq('id', participant.id)
+        .single()
 
-            const newPlayer = {
-              ...player,
-              assigned_to: participant.id
-            }
-            return [...prev, newPlayer]
-          })
+      if (participantError) {
+        console.error('Errore nel caricamento partecipante:', participantError)
+        return
+      }
 
-          // Aggiorna i conteggi dei ruoli SOLO se il giocatore non era già presente
-          setLocalPlayerCounts(prev => {
-            const currentPlayers = localMyPlayers.filter(p => p.id !== player.id)
-            const playerExists = currentPlayers.some(p => p.id === player.id)
-            if (playerExists) {
-              return prev // Non aggiornare i conteggi se il giocatore era già presente
-            }
-
-            return {
-              ...prev,
-              [player.ruolo]: prev[player.ruolo as keyof typeof prev] + 1
-            }
-          })
-        }
-
-        // Chiudi risultati dopo 5 secondi
-        setTimeout(() => setShowResults(false), 5000)
-      })
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(channel)
+      // Aggiorna gli stati locali
+      const updatedPlayers = playersData || []
+      setLocalMyPlayers(updatedPlayers)
+      setLocalPlayerCounts(updatePlayerCounts(updatedPlayers))
+      setLocalParticipant(prev => ({
+        ...prev,
+        budget: participantData.budget
+      }))
+    } catch (error) {
+      console.error('Errore nel refresh dei dati:', error)
     }
-  }, [participant.id])
+  }, [participant.id, supabase, updatePlayerCounts])
 
-  // Rimuovi il timer countdown locale - ora gestito dal server
-  // useEffect(() => {
-  //   if (timeRemaining > 0) {
-  //     const timer = setTimeout(() => {
-  //       setTimeRemaining(timeRemaining - 1)
-  //     }, 1000)
-  //     return () => clearTimeout(timer)
-  //   }
-  // }, [timeRemaining])
+  // Calcola il budget massimo disponibile per un'offerta
+  const calculateMaxBudget = useCallback(() => {
+    const totalPlayersOwned = localMyPlayers.length
+    const remainingSlots = 25 - totalPlayersOwned
+    return Math.max(1, localParticipant.budget - remainingSlots)
+  }, [localMyPlayers.length, localParticipant.budget])
 
-  // Aggiungi un nuovo stato per tracciare se è stata fatta almeno una bid
-  const [hasMadeBid, setHasMadeBid] = useState(false)
-  const [lastBidAmount, setLastBidAmount] = useState(0)
+  // Verifica se può fare offerte per un ruolo specifico
+  const canBidForRole = useCallback((role: string) => {
+    if (!role) return false
 
+    const limits = { P: 3, D: 8, C: 8, A: 6 }
+    const currentCount = localPlayerCounts[role as keyof typeof localPlayerCounts]
+    const limit = limits[role as keyof typeof limits]
+    return currentCount < limit
+  }, [localPlayerCounts])
+
+  const maxBudget = calculateMaxBudget()
+
+  // Funzione per inviare un'offerta
   const submitBid = async () => {
     if (!currentAuction || !bidAmount || isSubmitting) return
 
@@ -181,10 +134,8 @@ export default function ParticipantPortal({
       })
 
       if (response.ok) {
-        // Imposta che è stata fatta una bid e aggiorna l'importo
         setHasMadeBid(true)
         setLastBidAmount(amount)
-        // Rimuovi il timeout che nasconde la conferma
       } else {
         const error = await response.json()
         console.error('Errore API:', error)
@@ -196,14 +147,45 @@ export default function ParticipantPortal({
     }
   }
 
-  const passAuction = async () => {
-    setBidAmount('0')
-    await submitBid()
-  }
+  // Realtime subscriptions
+  useEffect(() => {
+    const channel = supabase
+      .channel('auction_events')
+      .on('broadcast', { event: 'player_selected' }, (payload) => {
+        setCurrentAuction(payload.payload)
+        const { auctionEndTime } = payload.payload
+        const timeLeft = Math.max(0, Math.ceil((auctionEndTime - Date.now()) / 1000))
+        setTimeRemaining(timeLeft)
+        setBidAmount('')
+        setShowResults(false)
+        setHasMadeBid(false)
+        setLastBidAmount(0)
+      })
+      .on('broadcast', { event: 'timer_update' }, (payload) => {
+        setTimeRemaining(payload.payload.timeRemaining)
+      })
+      .on('broadcast', { event: 'auction_closed' }, (payload) => {
+        setCurrentAuction(null)
+        setTimeRemaining(0)
+        setAuctionResults(payload.payload)
+        setShowResults(true)
+
+        // Aggiorna sempre i dati dal database per tutti i partecipanti
+        refreshPlayerData()
+
+        // Chiudi risultati dopo 5 secondi
+        setTimeout(() => setShowResults(false), 5000)
+      })
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [participant.id, refreshPlayerData, supabase])
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      {/* Header - usa dati locali */}
+      {/* Header con informazioni partecipante */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -228,31 +210,27 @@ export default function ParticipantPortal({
             </div>
           </div>
 
-          {/* Sezione separata per gli altri ruoli - usa conteggi locali */}
+          {/* Conteggi per ruolo */}
           <div className="mt-4 pt-4 border-t">
             <div className="grid grid-cols-4 gap-4 text-center">
               <div className="text-center">
-                <p className="text-lg font-semibold">{localPlayerCounts.P}/3</p>
-                <p className="text-sm text-gray-600">Portieri</p>
+                <p className="text-lg font-semibold">P: {localPlayerCounts.P}/3</p>
               </div>
               <div>
-                <p className="text-lg font-semibold">{localPlayerCounts.D}/8</p>
-                <p className="text-sm text-gray-600">Difensori</p>
+                <p className="text-lg font-semibold">D: {localPlayerCounts.D}/8</p>
               </div>
               <div>
-                <p className="text-lg font-semibold">{localPlayerCounts.C}/8</p>
-                <p className="text-sm text-gray-600">Centrocampisti</p>
+                <p className="text-lg font-semibold">C: {localPlayerCounts.C}/8</p>
               </div>
               <div>
-                <p className="text-lg font-semibold">{localPlayerCounts.A}/6</p>
-                <p className="text-sm text-gray-600">Attaccanti</p>
+                <p className="text-lg font-semibold">A: {localPlayerCounts.A}/6</p>
               </div>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* La mia squadra - usa giocatori locali */}
+      {/* La mia squadra */}
       <Card>
         <CardHeader>
           <CardTitle>La Mia Squadra</CardTitle>
@@ -266,6 +244,8 @@ export default function ParticipantPortal({
             <div className="grid gap-2">
               {['P', 'D', 'C', 'A'].map(role => {
                 const rolePlayers = localMyPlayers.filter(p => p.ruolo === role)
+                if (rolePlayers.length === 0) return null
+
                 return (
                   <div key={role}>
                     <h4 className="font-medium mb-2">
@@ -275,9 +255,12 @@ export default function ParticipantPortal({
                     </h4>
                     <div className="grid gap-1">
                       {rolePlayers.map(player => (
-                        <div key={player.id} className="flex justify-between items-center p-2 bg-gray-50 rounded">
-                          <span>{player.nome}</span>
-                          <span className="text-sm text-gray-600">{player.squadra}</span>
+                        <div key={player.id} className="grid grid-cols-3 p-2 bg-gray-50 rounded">
+                          <div className="col-span-1 font-medium">{player.nome}</div>
+                          <div className="col-span-1">{player.squadra}</div>
+                          <div className="col-span-1 font-semibold text-green-600 text-right">
+                            {player.purchase_price ? `${player.purchase_price}M` : 'N/A'}
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -289,7 +272,7 @@ export default function ParticipantPortal({
         </CardContent>
       </Card>
 
-      {/* Modal asta in corso - SOSTITUISCI QUESTO BLOCCO */}
+      {/* Modal asta in corso */}
       <Dialog open={!!currentAuction && timeRemaining > 0}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -309,7 +292,6 @@ export default function ParticipantPortal({
                 </div>
               </div>
 
-              {/* Sostituisci il timer manuale con AuctionTimer */}
               <AuctionTimer
                 initialTime={parseInt(process.env.NEXT_PUBLIC_TIMER || '30')}
                 isActive={true}
@@ -325,6 +307,7 @@ export default function ParticipantPortal({
                   </div>
                 </div>
               )}
+
               {canBidForRole(currentAuction.player.ruolo) ? (
                 <div className="space-y-4">
                   <div className="space-y-1">
