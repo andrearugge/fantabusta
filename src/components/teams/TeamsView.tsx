@@ -116,7 +116,7 @@ export default function TeamsView({
       if (index > 0) {
         csvContent += '$,$,$\n';
       }
-      
+
       [...team.players.P, ...team.players.D, ...team.players.C, ...team.players.A].forEach(player => {
         csvContent += `${team.participant.display_name},${player.player_id || ''},${player.purchase_price || 0}\n`;
       });
@@ -125,7 +125,7 @@ export default function TeamsView({
     // Crea e scarica il file
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
-    
+
     if (link.download !== undefined) {
       const url = URL.createObjectURL(blob);
       link.setAttribute('href', url);
@@ -185,28 +185,29 @@ export default function TeamsView({
       </div>
 
       {/* Grid delle formazioni */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-2 grid-cols-1 md:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-8">
         {teamsByParticipant.map((team) => (
           <Card key={team.participant.id} className="h-fit">
-            <CardHeader className="pb-4">
+            <CardHeader className="pb-4 px-3">
               <CardTitle className="flex items-center justify-between">
-                <span className="text-lg">{team.participant.display_name}</span>
+                <span className="text-sm">{team.participant.display_name}</span>
+              </CardTitle>
+              <div className="flex justify-between text-sm text-gray-600">
+                <Badge variant="outline">
+                  {team.totalSpent} / {team.participant.budget}M
+                </Badge>
                 <Badge variant="outline">
                   {team.totalPlayers}/25
                 </Badge>
-              </CardTitle>
-              <div className="flex justify-between text-sm text-gray-600">
-                <span>Budget speso: <span className="font-semibold text-green-600">{team.totalSpent}M</span></span>
-                <span>Rimanente: <span className="font-semibold">{team.participant.budget}M</span></span>
               </div>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-4 px-3">
               {/* Portieri */}
               {team.players.P.length > 0 && (
                 <div>
-                  <h4 className="font-medium text-sm text-gray-700 mb-2 flex items-center">
+                  <h4 className="font-medium text-sm text-gray-700 mb-2 flex items-center text-xs">
                     <Badge variant="secondary" className="mr-2 text-xs">P</Badge>
-                    Portieri ({team.players.P.length}/3)
+                    ({team.players.P.length}/3)
                   </h4>
                   <div className="space-y-1">
                     {team.players.P.map((player) => (
@@ -233,9 +234,9 @@ export default function TeamsView({
               {/* Difensori */}
               {team.players.D.length > 0 && (
                 <div>
-                  <h4 className="font-medium text-sm text-gray-700 mb-2 flex items-center">
+                  <h4 className="font-medium text-sm text-gray-700 mb-2 flex items-center text-xs">
                     <Badge variant="secondary" className="mr-2 text-xs">D</Badge>
-                    Difensori ({team.players.D.length}/8)
+                    ({team.players.D.length}/8)
                   </h4>
                   <div className="space-y-1">
                     {team.players.D.map((player) => (
@@ -262,9 +263,9 @@ export default function TeamsView({
               {/* Centrocampisti */}
               {team.players.C.length > 0 && (
                 <div>
-                  <h4 className="font-medium text-sm text-gray-700 mb-2 flex items-center">
+                  <h4 className="font-medium text-sm text-gray-700 mb-2 flex items-center text-xs">
                     <Badge variant="secondary" className="mr-2 text-xs">C</Badge>
-                    Centrocampisti ({team.players.C.length}/8)
+                    ({team.players.C.length}/8)
                   </h4>
                   <div className="space-y-1">
                     {team.players.C.map((player) => (
@@ -291,9 +292,9 @@ export default function TeamsView({
               {/* Attaccanti */}
               {team.players.A.length > 0 && (
                 <div>
-                  <h4 className="font-medium text-sm text-gray-700 mb-2 flex items-center">
+                  <h4 className="font-medium text-gray-700 mb-2 flex items-center text-xs">
                     <Badge variant="secondary" className="mr-2 text-xs">A</Badge>
-                    Attaccanti ({team.players.A.length}/6)
+                    ({team.players.A.length}/6)
                   </h4>
                   <div className="space-y-1">
                     {team.players.A.map((player) => (

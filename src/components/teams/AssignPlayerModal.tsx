@@ -209,7 +209,7 @@ export default function AssignPlayerModal({
             <Card>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="col-span-2 lg:col-span-1 space-y-1">
+                  <div className="col-span-2 space-y-1">
                     <Label htmlFor="participant">Partecipante</Label>
                     <Select value={selectedParticipant} onValueChange={setSelectedParticipant}>
                       <SelectTrigger>
@@ -225,7 +225,7 @@ export default function AssignPlayerModal({
                     </Select>
                   </div>
 
-                  <div className="col-span-2 lg:col-span-1 space-y-1">
+                  <div className="col-span-2 space-y-1">
                     <Label htmlFor="price">Prezzo (M)</Label>
                     <Input
                       id="price"

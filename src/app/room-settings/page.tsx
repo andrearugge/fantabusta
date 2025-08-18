@@ -466,10 +466,10 @@ function RoomSettingsContent() {
           </CardHeader>
           <CardContent className="space-y-4">
             {room?.status === 'active' && (
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg px-4 py-2">
                 <div className="flex items-center gap-2 text-yellow-800">
                   <AlertTriangle className="h-5 w-5" />
-                  <span className="font-medium">Asta in corso</span>
+                  <span className="font-medium text-sm">Asta in corso</span>
                 </div>
                 <p className="text-yellow-700 mt-1 text-sm">
                   Non è possibile re-importare giocatori durante un'asta attiva
