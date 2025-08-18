@@ -90,7 +90,7 @@ export default function ActiveRooms() {
         const createdDate = new Date(room.created_at).toLocaleDateString('it-IT')
 
         return (
-          <Card key={room.id} className="hover:shadow-lg transition-shadow">
+          <Card key={room.id}>
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle className="flex items-center gap-2">
@@ -137,7 +137,7 @@ export default function ActiveRooms() {
         )
       })}
 
-      <Card className="hover:shadow-lg transition-shadow flex flex-col">
+      <Card className="flex flex-col">
         <CardHeader className="flex-shrink-0">
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
