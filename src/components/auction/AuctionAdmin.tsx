@@ -1,12 +1,11 @@
 'use client'
 
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { Search, Play, SkipForward, Users, Clock, Home, ChevronRight, Settings, Trophy } from 'lucide-react'
+import { SkipForward, Users, Clock, Home, ChevronRight, Settings, Trophy } from 'lucide-react'
 import { Room, Participant, Player } from '@/types'
 import Link from 'next/link'
 import { AuctionTimer } from './AuctionTimer'
@@ -20,15 +19,13 @@ interface AuctionAdminProps {
 // Componente separato per le card dei partecipanti
 interface ParticipantCardProps {
   participant: Participant
-  index: number
   currentTurn: number
   roomId: string
 }
 
-function ParticipantCard({ participant, index, currentTurn, roomId }: ParticipantCardProps) {
+function ParticipantCard({ participant, currentTurn, roomId }: ParticipantCardProps) {
   const [stats, setStats] = useState({ P: 0, D: 0, C: 0, A: 0, total: 0 })
   const supabase = createClient()
-  // CORREZIONE: turn_order è già 0-indexed, non serve sottrarre 1
   const isCurrentTurn = participant.turn_order === currentTurn
 
   const fetchStats = useCallback(async () => {
@@ -70,8 +67,9 @@ function ParticipantCard({ participant, index, currentTurn, roomId }: Participan
 
   return (
     <div
-      className={`p-3 border rounded-lg ${isCurrentTurn ? ' border-blue-500 bg-blue-50' : 'bg-white'
-        }`}
+      className={`p-3 border rounded-lg ${
+        isCurrentTurn ? 'border-blue-500 bg-blue-50' : 'bg-white'
+      }`}
     >
       <div className="flex justify-between items-start mb-2">
         <p className="font-medium">{participant.display_name}</p>
@@ -102,14 +100,11 @@ export default function AuctionAdmin({
   const supabase = createClient()
 
   // Stati del componente
-  const [participants, setParticipants] = useState<Participant[]>([])
-  const [searchTerm, setSearchTerm] = useState('')
+  const [participants, setParticipants] = useState<Participant[]>(initialParticipants)
   const [currentTurn, setCurrentTurn] = useState(0)
   const [timeRemaining, setTimeRemaining] = useState(0)
   const [isAuctionActive, setIsAuctionActive] = useState(false)
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null)
-  const [selectedRoles, setSelectedRoles] = useState<string[]>(['P', 'D', 'C', 'A'])
-  const [localPlayers, setLocalPlayers] = useState<Player[]>([])
 
   // Funzione per caricare tutti i dati dal database
   const loadDataFromDatabase = useCallback(async () => {
@@ -125,7 +120,7 @@ export default function AuctionAdmin({
         console.error('Errore recupero room:', roomError)
       }
 
-      // Carica partecipanti ordinati per turn_order (dal 1 al numero più grande)
+      // Carica partecipanti ordinati per turn_order
       const { data: participantsData, error: participantsError } = await supabase
         .from('participants')
         .select('*')
@@ -136,18 +131,6 @@ export default function AuctionAdmin({
         console.error('Errore recupero partecipanti:', participantsError)
       } else {
         setParticipants(participantsData || [])
-      }
-
-      // Carica giocatori
-      const { data: playersData, error: playersError } = await supabase
-        .from('players')
-        .select('*')
-        .eq('room_id', room.id)
-
-      if (playersError) {
-        console.error('Errore recupero giocatori:', playersError)
-      } else {
-        setLocalPlayers(playersData || [])
       }
 
       // Imposta il currentTurn dal database
@@ -203,15 +186,14 @@ export default function AuctionAdmin({
       // Calcola il nuovo turno
       const newTurn = (currentTurn + 1) % participants.length
 
-      // Aggiorna il turno nel database PRIMA di fare il broadcast
+      // Aggiorna il turno nel database
       const success = await updateTurnInDatabase(newTurn)
 
       if (success) {
-        // Aggiorna lo stato locale
         setCurrentTurn(newTurn)
         setSelectedPlayer(null)
 
-        // Broadcast del cambio turno a tutti i client
+        // Broadcast del cambio turno
         await supabase
           .channel('auction_events')
           .send({
@@ -223,7 +205,6 @@ export default function AuctionAdmin({
             }
           })
 
-        // Ricarica solo i dati necessari (giocatori e budget)
         await loadDataFromDatabase()
       }
     } catch (error) {
@@ -258,43 +239,6 @@ export default function AuctionAdmin({
     }
   }, [currentTurn, participants, supabase, updateTurnInDatabase])
 
-  // Funzione per avviare l'asta
-  const startAuction = useCallback(async (player: Player) => {
-    setSelectedPlayer(player)
-    setIsAuctionActive(true)
-
-    try {
-      await fetch('/api/auction/start', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          roomId: room.id,
-          playerId: player.id,
-          currentTurn
-        })
-      })
-    } catch (error) {
-      console.error('Errore avvio asta:', error)
-      setIsAuctionActive(false)
-      setSelectedPlayer(null)
-    }
-  }, [room.id, currentTurn])
-
-  // Funzioni di gestione UI
-  const toggleRole = useCallback((role: string) => {
-    setSelectedRoles(prev =>
-      prev.includes(role)
-        ? prev.filter(r => r !== role)
-        : [...prev, role]
-    )
-  }, [])
-
-  const toggleAllRoles = useCallback(() => {
-    setSelectedRoles(prev =>
-      prev.length === 4 ? [] : ['P', 'D', 'C', 'A']
-    )
-  }, [])
-
   // Gestione eventi realtime
   useEffect(() => {
     const channel = supabase
@@ -303,17 +247,19 @@ export default function AuctionAdmin({
         setTimeRemaining(payload.payload.timeRemaining)
       })
       .on('broadcast', { event: 'turn_changed' }, (payload) => {
-        // Aggiorna solo il currentTurn, non ricaricare i partecipanti
         setCurrentTurn(payload.payload.newTurn)
       })
       .on('broadcast', { event: 'auction_closed' }, async (payload) => {
-        // Gestisci chiusura asta
         setIsAuctionActive(false)
         setSelectedPlayer(null)
         setTimeRemaining(0)
-
-        // Ricarica solo i dati necessari dal database
         await loadDataFromDatabase()
+      })
+      .on('broadcast', { event: 'player_selected' }, (payload) => {
+        // Quando un partecipante seleziona un giocatore
+        setSelectedPlayer(payload.payload.player)
+        setIsAuctionActive(true)
+        setTimeRemaining(payload.payload.duration || 30)
       })
       .subscribe()
 
@@ -321,33 +267,6 @@ export default function AuctionAdmin({
       supabase.removeChannel(channel)
     }
   }, [room.id, supabase, loadDataFromDatabase])
-
-  // Calcoli derivati
-  const availablePlayers = useMemo(() =>
-    localPlayers.filter(p => !p.is_assigned),
-    [localPlayers]
-  )
-
-  const filteredPlayers = useMemo(() => {
-    return availablePlayers.filter(p => {
-      // Filtro per nome/squadra
-      const matchesSearch = p.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        p.squadra.toLowerCase().includes(searchTerm.toLowerCase())
-
-      // Filtro per ruolo
-      const matchesRole = selectedRoles.includes(p.ruolo)
-
-      return matchesSearch && matchesRole
-    }).sort((a, b) => {
-      // Ordina prima per ruolo, poi per nome
-      if (a.ruolo !== b.ruolo) {
-        const roleOrder = { 'P': 1, 'D': 2, 'C': 3, 'A': 4 }
-        return roleOrder[a.ruolo as keyof typeof roleOrder] - roleOrder[b.ruolo as keyof typeof roleOrder]
-      }
-      // Se stesso ruolo, ordina per nome
-      return a.nome.localeCompare(b.nome)
-    })
-  }, [availablePlayers, searchTerm, selectedRoles])
 
   return (
     <div className="lg:h-[90vh] lg:overflow-y">
@@ -372,7 +291,7 @@ export default function AuctionAdmin({
               </div>
             </div>
 
-            {/* Timer e controlli */}
+            {/* Timer e controlli asta attiva */}
             {isAuctionActive && selectedPlayer && (
               <Card>
                 <CardHeader>
@@ -405,84 +324,29 @@ export default function AuctionAdmin({
               </Card>
             )}
 
-            <div className="">
-              {/* Selezione giocatore */}
-              <div className="space-y-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Search className="h-5 w-5" />
-                      Seleziona Calciatore
-                    </CardTitle>
-                    <CardDescription>
-                      {availablePlayers.length} calciatori disponibili
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <Input
-                      placeholder="Cerca per nome o squadra..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-
-                    {/* Filtri per ruolo */}
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <label className="text-sm font-medium">Filtra per ruolo:</label>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={toggleAllRoles}
-                          className="text-xs"
-                        >
-                          {selectedRoles.length === 4 ? 'Deseleziona tutti' : 'Seleziona tutti'}
-                        </Button>
-                      </div>
-                      <div className="flex gap-2">
-                        {['P', 'D', 'C', 'A'].map((role) => (
-                          <Button
-                            key={role}
-                            variant={selectedRoles.includes(role) ? 'default' : 'outline'}
-                            size="sm"
-                            onClick={() => toggleRole(role)}
-                          >
-                            {role}
-                          </Button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Lista giocatori */}
-                    <div className="max-h-96 overflow-y-auto space-y-2">
-                      {filteredPlayers.map((player) => (
-                        <div
-                          key={player.id}
-                          className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50"
-                        >
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2">
-                              <Badge variant="outline">{player.ruolo}</Badge>
-                              <span className="font-medium">{player.nome}</span>
-                            </div>
-                            <p className="text-sm text-gray-600">{player.squadra}</p>
-                          </div>
-                          <Button
-                            onClick={() => startAuction(player)}
-                            disabled={isAuctionActive}
-                            size="sm"
-                          >
-                            <Play className="h-4 w-4 mr-1" />
-                            Avvia
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
+            {/* Messaggio informativo quando nessuna asta è attiva */}
+            {!isAuctionActive && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Controllo Asta</CardTitle>
+                  <CardDescription>
+                    L'asta è gestita dai partecipanti. Il partecipante di turno può selezionare un calciatore dal proprio portale.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-center py-4">
+                    <p className="text-gray-600">
+                      Turno corrente: <span className="font-medium">
+                        {participants[currentTurn]?.display_name || 'Caricamento...'}
+                      </span>
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
         </div>
+        
         <div className="lg:col-span-2 col-span-5 space-y-6 px-4 lg:pl-8 py-8 border-l border-gray-200">
           {/* Squadre */}
           <div className="grid grid-cols-2 gap-4">
@@ -520,7 +384,6 @@ export default function AuctionAdmin({
               <ParticipantCard
                 key={participant.id}
                 participant={participant}
-                index={participant.turn_order - 1} // Converti turn_order (1-based) a index (0-based)
                 currentTurn={currentTurn}
                 roomId={room.id}
               />

@@ -1,11 +1,13 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
+import { logger } from '@/lib/logger'
 
 export async function POST(request: NextRequest) {
   try {
-    const { roomId, playerId, currentTurn } = await request.json()
+    const { roomId, playerId, participantId, currentTurn } = await request.json()
     
-    if (!roomId || !playerId) {
+    // Validation
+    if (!roomId || !playerId || !participantId) {
       return NextResponse.json(
         { error: 'Parametri mancanti' },
         { status: 400 }
@@ -14,26 +16,71 @@ export async function POST(request: NextRequest) {
 
     const supabase = await createClient()
     
-    // Verifica che il calciatore non sia già assegnato
+    // Verifica che non ci sia già un'asta attiva usando auction_timers
+    const { data: existingTimer } = await supabase
+      .from('auction_timers')
+      .select('id')
+      .eq('room_id', roomId)
+      .eq('is_active', true)
+      .single()
+    
+    if (existingTimer) {
+      return NextResponse.json(
+        { error: 'Asta già in corso' },
+        { status: 409 }
+      )
+    }
+
+    // Recupera dati del giocatore
     const { data: player, error: playerError } = await supabase
       .from('players')
       .select('*')
       .eq('id', playerId)
+      .eq('room_id', roomId)
       .eq('is_assigned', false)
       .single()
-    
+
     if (playerError || !player) {
       return NextResponse.json(
-        { error: 'Calciatore non disponibile' },
-        { status: 400 }
+        { error: 'Giocatore non trovato o già assegnato' },
+        { status: 404 }
       )
     }
 
-    // Crea timer nel database
+    // Verifica che sia il turno del partecipante
+    const { data: roomData, error: roomError } = await supabase
+      .from('rooms')
+      .select('current_turn')
+      .eq('id', roomId)
+      .single()
+
+    if (roomError || roomData.current_turn !== currentTurn) {
+      return NextResponse.json(
+        { error: 'Non è il tuo turno' },
+        { status: 403 }
+      )
+    }
+
+    // Verifica che il partecipante sia quello di turno
+    const { data: participant, error: participantError } = await supabase
+      .from('participants')
+      .select('turn_order')
+      .eq('id', participantId)
+      .eq('room_id', roomId)
+      .single()
+
+    if (participantError || participant.turn_order !== currentTurn) {
+      return NextResponse.json(
+        { error: 'Non autorizzato per questo turno' },
+        { status: 403 }
+      )
+    }
+
+    // Crea nuovo timer di asta usando auction_timers
+    const timerDuration = parseInt(process.env.NEXT_PUBLIC_TIMER || '30')
     const startTime = new Date()
-    const timerDuration = parseInt(process.env.NEXT_PUBLIC_TIMER || '30') * 1000 // Converti in millisecondi
-    const endTime = new Date(Date.now() + timerDuration)
-    
+    const endTime = new Date(startTime.getTime() + timerDuration * 1000)
+
     const { data: timer, error: timerError } = await supabase
       .from('auction_timers')
       .insert({
@@ -47,32 +94,47 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (timerError) {
-      console.error('Errore creazione timer:', timerError)
+      logger.error('Errore creazione timer asta:', timerError)
       return NextResponse.json(
-        { error: 'Errore creazione timer' },
+        { error: 'Errore creazione asta' },
         { status: 500 }
       )
     }
 
-    // Invia evento realtime
+    // Avvia timer server-side
+    startServerTimer(supabase, endTime.getTime(), roomId, playerId)
+
+    // Broadcast evento realtime
     await supabase
       .channel('auction_events')
       .send({
         type: 'broadcast',
         event: 'player_selected',
         payload: {
+          timer,
           player,
           currentTurn,
-          timerId: timer.id,
           auctionEndTime: endTime.getTime(),
-          timeRemaining: parseInt(process.env.NEXT_PUBLIC_TIMER || '30')
+          timeRemaining: timerDuration,
+          duration: timerDuration
         }
       })
 
-    return NextResponse.json({ success: true, timerId: timer.id })
+    logger.info('Asta avviata con successo', {
+      timerId: timer.id,
+      playerId,
+      participantId,
+      roomId
+    })
+
+    return NextResponse.json({ 
+      success: true, 
+      timerId: timer.id,
+      endTime: endTime.toISOString()
+    })
     
   } catch (error) {
-    console.error('Errore API start auction:', error)
+    logger.error('Errore API start auction:', error)
     return NextResponse.json(
       { error: 'Errore interno del server' },
       { status: 500 }

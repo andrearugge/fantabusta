@@ -11,6 +11,7 @@ import { Progress } from '@/components/ui/progress'
 import { User, DollarSign, Users, Clock, CheckCircle } from 'lucide-react'
 import { Participant, Player } from '@/types'
 import { AuctionTimer } from '../auction/AuctionTimer'
+import PlayerSelector from './PlayerSelector'
 
 interface ParticipantPortalProps {
   participant: Participant & { rooms: any }
@@ -148,6 +149,37 @@ export default function ParticipantPortal({
     }
   }
 
+  // Nuovo stato per il turno corrente
+  const [currentTurn, setCurrentTurn] = useState(0)
+  const [isMyTurn, setIsMyTurn] = useState(false)
+
+  // Funzione per verificare se è il turno del partecipante
+  const checkIfMyTurn = useCallback(async () => {
+    try {
+      const { data: roomData, error } = await supabase
+        .from('rooms')
+        .select('current_turn')
+        .eq('id', participant.room_id)
+        .single()
+
+      if (error) {
+        console.error('Errore recupero turno:', error)
+        return
+      }
+
+      const newCurrentTurn = roomData.current_turn || 0
+      setCurrentTurn(newCurrentTurn)
+      setIsMyTurn(participant.turn_order === newCurrentTurn)
+    } catch (error) {
+      console.error('Errore verifica turno:', error)
+    }
+  }, [supabase, participant.room_id, participant.turn_order])
+
+  // Carica il turno corrente all'avvio
+  useEffect(() => {
+    checkIfMyTurn()
+  }, [checkIfMyTurn])
+
   // Realtime subscriptions
   useEffect(() => {
     const channel = supabase
@@ -161,10 +193,15 @@ export default function ParticipantPortal({
         setShowResults(false)
         setHasMadeBid(false)
         setLastBidAmount(0)
-        setIsResultsReady(false) // Reset per nuova asta
+        setIsResultsReady(false)
       })
       .on('broadcast', { event: 'timer_update' }, (payload) => {
         setTimeRemaining(payload.payload.timeRemaining)
+      })
+      .on('broadcast', { event: 'turn_changed' }, (payload) => {
+        // Aggiorna il turno corrente
+        setCurrentTurn(payload.payload.newTurn)
+        setIsMyTurn(participant.turn_order === payload.payload.newTurn)
       })
       .on('broadcast', { event: 'auction_closed' }, (payload) => {
         setCurrentAuction(null)
@@ -207,7 +244,7 @@ export default function ParticipantPortal({
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [participant.id, refreshPlayerData, supabase, isResultsReady])
+  }, [participant.id, participant.turn_order, refreshPlayerData, supabase, isResultsReady])
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -217,6 +254,9 @@ export default function ParticipantPortal({
           <CardTitle className="flex items-center gap-2">
             <User className="h-5 w-5" />
             {localParticipant.display_name}
+            {isMyTurn && (
+              <Badge className="ml-2 bg-green-600">È il tuo turno!</Badge>
+            )}
           </CardTitle>
           <CardDescription>
             Asta: {localParticipant.rooms.code}
@@ -255,6 +295,18 @@ export default function ParticipantPortal({
           </div>
         </CardContent>
       </Card>
+
+      {/* Selezione calciatore - visibile solo se è il turno del partecipante */}
+      {isMyTurn && !currentAuction && (
+        <PlayerSelector
+          roomId={participant.room_id}
+          participantId={participant.id}
+          currentTurn={currentTurn}
+          onPlayerSelected={(player) => {
+            console.log('Calciatore selezionato:', player.nome)
+          }}
+        />
+      )}
 
       {/* La mia squadra */}
       <Card>
