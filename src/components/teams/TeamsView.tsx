@@ -177,6 +177,7 @@ export default function TeamsView({
           </Button>
           <Button
             onClick={() => setIsAssignModalOpen(true)}
+            variant={'outline'}
             className="flex items-center gap-2"
           >
             <UserPlus className="h-4 w-4" />
