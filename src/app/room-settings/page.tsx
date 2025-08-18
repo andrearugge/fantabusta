@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
-import { Copy, Check, Users, Settings, Home, ChevronRight, Upload, FileText, AlertTriangle, Play, Pause } from 'lucide-react'
+import { Copy, Check, Users, Settings, Home, ChevronRight, Upload, FileText, AlertTriangle, Play, Pause, Edit2 } from 'lucide-react'
 import Link from 'next/link'
 import { getBaseUrl } from '@/lib/utils/url'
 import { CSVPlayer } from '@/types'
@@ -48,6 +48,11 @@ function RoomSettingsContent() {
 
   // Stati per controllo asta
   const [isPausing, setIsPausing] = useState(false)
+
+  // Stati per modifica nomi partecipanti
+  const [editingParticipant, setEditingParticipant] = useState<string | null>(null)
+  const [editingName, setEditingName] = useState('')
+  const [isUpdatingName, setIsUpdatingName] = useState(false)
 
   useEffect(() => {
     // Imposta l'URL di base quando il componente si monta
@@ -93,6 +98,53 @@ function RoomSettingsContent() {
       }, 2000)
     } catch (error) {
       console.error('Errore copia:', error)
+    }
+  }
+
+  // Funzione per aggiornare il nome del partecipante
+  const updateParticipantName = async (participantId: string, newName: string) => {
+    if (!newName.trim()) {
+      alert('Il nome non può essere vuoto')
+      return
+    }
+
+    setIsUpdatingName(true)
+    try {
+      const response = await fetch('/api/participants/update', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          participantId,
+          displayName: newName.trim()
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('Errore aggiornamento nome')
+      }
+
+      const result = await response.json()
+      
+      // Aggiorna lo stato locale
+      setRoom(prev => ({
+        ...prev!,
+        participants: prev!.participants.map(p => 
+          p.id === participantId 
+            ? { ...p, display_name: result.participant.display_name }
+            : p
+        )
+      }))
+      
+      setEditingParticipant(null)
+      setEditingName('')
+      
+    } catch (error) {
+      console.error('Errore:', error)
+      alert('Errore durante l\'aggiornamento del nome')
+    } finally {
+      setIsUpdatingName(false)
     }
   }
 
@@ -419,7 +471,7 @@ function RoomSettingsContent() {
                   <AlertTriangle className="h-5 w-5" />
                   <span className="font-medium">Asta in corso</span>
                 </div>
-                <p className="text-yellow-700 mt-1">
+                <p className="text-yellow-700 mt-1 text-sm">
                   Non è possibile re-importare giocatori durante un'asta attiva
                 </p>
               </div>
@@ -488,46 +540,76 @@ function RoomSettingsContent() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
+            <div className="space-y-3">
               {room.participants
                 .sort((a, b) => a.turn_order - b.turn_order)
-                .map((participant) => (
-                  <div key={participant.id} className="border rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline">#{participant.turn_order + 1}</Badge>
-                        <span className="font-semibold">{participant.display_name}</span>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <div>
-                        <Label className="text-xs text-gray-500">Link Partecipazione</Label>
-                        <div className="flex gap-2">
+                .map((participant, index) => (
+                  <div key={participant.id} className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <Badge variant="outline">{index + 1}</Badge>
+                      {editingParticipant === participant.id ? (
+                        <div className="flex items-center gap-2">
                           <Input
-                            value={`${baseUrl}/p/${participant.join_token}`}
-                            readOnly
-                            className="font-mono text-sm"
+                            value={editingName}
+                            onChange={(e) => setEditingName(e.target.value)}
+                            className="w-40"
+                            placeholder="Nome partecipante"
+                            disabled={isUpdatingName}
                           />
                           <Button
                             size="sm"
-                            variant="outline"
-                            onClick={() => copyToClipboard(
-                              `${baseUrl}/p/${participant.join_token}`,
-                              participant.id
-                            )}
+                            onClick={() => updateParticipantName(participant.id, editingName)}
+                            disabled={isUpdatingName || !editingName.trim()}
                           >
-                            {copiedLinks.has(participant.id) ? (
-                              <Check className="h-4 w-4 text-green-600" />
-                            ) : (
-                              <Copy className="h-4 w-4" />
-                            )}
+                            {isUpdatingName ? 'Salvataggio...' : 'Salva'}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setEditingParticipant(null)
+                              setEditingName('')
+                            }}
+                            disabled={isUpdatingName}
+                          >
+                            Annulla
                           </Button>
                         </div>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{participant.display_name}</span>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              setEditingParticipant(participant.id)
+                              setEditingName(participant.display_name)
+                            }}
+                          >
+                            <Edit2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex flex-1 items-center gap-2">
+                      <div className="flex-1 text-right">
+                        <p className="text-sm text-gray-600 w-full">{`${getBaseUrl()}/p/${participant.join_url}`}</p>
                       </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => copyToClipboard(`${getBaseUrl()}/p/${participant.join_url}`, participant.id)}
+                      >
+                        {copiedLinks.has(participant.id) ? (
+                          <Check className="h-4 w-4" />
+                        ) : (
+                          <Copy className="h-4 w-4" />
+                        )}
+                      </Button>
                     </div>
                   </div>
-                ))}
+                ))
+              }
             </div>
           </CardContent>
         </Card>
@@ -536,7 +618,7 @@ function RoomSettingsContent() {
   )
 }
 
-// Componente di fallback per Suspense
+// Componente di loading
 function RoomSettingsLoading() {
   return (
     <div className="container mx-auto px-4 py-8">
