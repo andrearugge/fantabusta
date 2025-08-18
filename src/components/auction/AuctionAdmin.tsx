@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { Search, Play, SkipForward, Users, Clock, Home, ChevronRight, Settings } from 'lucide-react'
+import { Search, Play, SkipForward, Users, Clock, Home, ChevronRight, Settings, Trophy } from 'lucide-react'
 import { Room, Participant, Player } from '@/types'
 import Link from 'next/link'
 import { AuctionTimer } from './AuctionTimer'
@@ -70,9 +70,8 @@ function ParticipantCard({ participant, index, currentTurn, roomId }: Participan
 
   return (
     <div
-      className={`p-3 border rounded-lg ${
-        isCurrentTurn ? ' border-blue-500 bg-blue-50' : 'bg-white'
-      }`}
+      className={`p-3 border rounded-lg ${isCurrentTurn ? ' border-blue-500 bg-blue-50' : 'bg-white'
+        }`}
     >
       <div className="flex justify-between items-start mb-2">
         <p className="font-medium">{participant.display_name}</p>
@@ -240,7 +239,7 @@ export default function AuctionAdmin({
 
     if (success) {
       setCurrentTurn(newTurn)
-      
+
       try {
         // Broadcast del cambio turno
         await supabase
@@ -334,10 +333,10 @@ export default function AuctionAdmin({
       // Filtro per nome/squadra
       const matchesSearch = p.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
         p.squadra.toLowerCase().includes(searchTerm.toLowerCase())
-  
+
       // Filtro per ruolo
       const matchesRole = selectedRoles.includes(p.ruolo)
-  
+
       return matchesSearch && matchesRole
     }).sort((a, b) => {
       // Ordina prima per ruolo, poi per nome
@@ -354,11 +353,11 @@ export default function AuctionAdmin({
     <div className="lg:h-[90vh] lg:overflow-y">
       <div className="grid grid-cols-5 h-full">
         <div className="lg:col-span-3 col-span-5">
-          <div className="container mx-auto lg:px-8 px-4 py-8 space-y-6">
+          <div className="container-fluid mx-auto px-4 lg:pr-8 py-8 space-y-6">
             <div className="grid grid-cols-2 items-center space-y-2">
               <div className="lg:col-span-1 col-span-2">
                 <div className="text-lg font-bold flex items-center gap-2">
-                  <Users className="h-5 w-5" /> Selezione calciatore
+                  <Settings className="h-5 w-5" /> Admin asta
                 </div>
               </div>
               <div className="lg:col-span-1 col-span-2 flex lg:justify-end">
@@ -368,12 +367,7 @@ export default function AuctionAdmin({
                     Homepage
                   </Link>
                   <ChevronRight className="h-4 w-4" />
-                  <span className="text-gray-900 font-medium">Asta</span>
-                  <ChevronRight className="h-4 w-4" />
-                  <Link href={`/room-settings?code=${room.code}`} className="flex items-center hover:text-gray-900 transition-colors">
-                    <Settings className="h-4 w-4 mr-1" />
-                    Impostazioni
-                  </Link>
+                  <Trophy className="h-4 w-4 mr-1" /> <span className="text-gray-900 font-medium">Asta</span>
                 </nav>
               </div>
             </div>
@@ -489,7 +483,7 @@ export default function AuctionAdmin({
             </div>
           </div>
         </div>
-        <div className="lg:col-span-2 col-span-5 space-y-6 lg:px-8 px-4 py-8 border-l border-gray-200">
+        <div className="lg:col-span-2 col-span-5 space-y-6 px-4 lg:pl-8 py-8 border-l border-gray-200">
           {/* Squadre */}
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-1">
@@ -497,7 +491,12 @@ export default function AuctionAdmin({
                 <Users className="h-5 w-5" /> Squadre
               </div>
             </div>
-            <div className="col-span-1 justify-end flex items-center">
+            <div className="col-span-1 justify-end flex items-center gap-2">
+              <Link href={`/room-settings?code=${room.code}`}>
+                <Button variant="outline" size="sm" className="cursor-pointer px-3">
+                  Impostazioni
+                </Button>
+              </Link>
               <Link href={`/teams/${room.code}`}>
                 <Button variant="outline" size="sm" className="cursor-pointer px-3">
                   Formazioni
@@ -515,7 +514,7 @@ export default function AuctionAdmin({
             <SkipForward className="h-4 w-4 mr-1" />
             Salta Turno
           </Button>
-          
+
           <div className="grid gap-2 lg:grid-cols-2">
             {participants.map((participant) => (
               <ParticipantCard

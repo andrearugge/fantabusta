@@ -3,7 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Home, ChevronRight, Users, Trophy, Trash2, UserPlus, Download } from 'lucide-react'
+import { Home, ChevronRight, Users, Trophy, Trash2, UserPlus, Download, Settings } from 'lucide-react'
 import { Room, Participant, Player } from '@/types'
 import Link from 'next/link'
 import { useState } from 'react'
@@ -141,31 +141,32 @@ export default function TeamsView({
 
   return (
     <div className="space-y-6">
-      {/* Breadcrumbs */}
-      <nav className="flex items-center space-x-2 text-sm text-gray-600">
-        <Link href="/" className="flex items-center hover:text-gray-900 transition-colors">
-          <Home className="h-4 w-4 mr-1" />
-          Homepage
-        </Link>
-        <ChevronRight className="h-4 w-4" />
-        <Link href={`/auction/${room.code}`} className="flex items-center hover:text-gray-900 transition-colors">
-          <Trophy className="h-4 w-4 mr-1" />
-          Asta {room.code}
-        </Link>
-        <ChevronRight className="h-4 w-4" />
-        <span className="text-gray-900 font-medium flex items-center">
-          <Users className="h-4 w-4 mr-1" />
-          Formazioni
-        </span>
-      </nav>
-
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-black">Formazioni</h1>
-          <p className="text-gray-600">Visualizza tutte le squadre dei partecipanti</p>
+          {/* Breadcrumbs */}
+          <nav className="flex items-center space-x-2 text-sm text-gray-600 mt-2">
+            <Link href="/" className="flex items-center hover:text-gray-900 transition-colors">
+              <Home className="h-4 w-4 mr-1" />
+              Homepage
+            </Link>
+            <ChevronRight className="h-4 w-4" />
+            <Link href={`/auction/${room.code}`} className="flex items-center hover:text-gray-900 transition-colors">
+              <Trophy className="h-4 w-4 mr-1" />
+              Asta
+            </Link>
+            <ChevronRight className="h-4 w-4" />
+            <span className="text-gray-900 font-medium flex items-center">
+              <Users className="h-4 w-4 mr-1" />
+              Formazioni
+            </span>
+          </nav>
         </div>
         <div className="flex gap-2">
+          <Link href={`/auction/${room.code}`}>
+            <Button variant="outline"><Settings className="h-4 w-4" /> Admin asta</Button>
+          </Link>
           <Button
             className="flex items-center gap-2"
             variant={'outline'}

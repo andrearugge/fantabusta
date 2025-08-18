@@ -45,7 +45,7 @@ export default async function ParticipantPage({ params }: ParticipantPageProps) 
 
   return (
     <div className="min-h-screen bg-gray-50 bg-white">
-      <div className="container mx-auto px-4 py-8">
+      <div className="container-fluid mx-auto px-4 py-8">
         <ParticipantPortal 
           participant={participant}
           myPlayers={myPlayers || []}

@@ -47,7 +47,7 @@ export default async function TeamsPage({ params }: TeamsPageProps) {
 
   return (
     <div className="min-h-screen bg-gray-50 bg-gray-50">
-      <div className="container mx-auto px-4 py-8">
+      <div className="container-fluid mx-auto px-4 py-8">
         <TeamsView 
           room={roomData}
           participants={participants || []}

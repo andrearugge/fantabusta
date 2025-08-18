@@ -126,20 +126,20 @@ function RoomSettingsContent() {
       }
 
       const result = await response.json()
-      
+
       // Aggiorna lo stato locale
       setRoom(prev => ({
         ...prev!,
-        participants: prev!.participants.map(p => 
-          p.id === participantId 
+        participants: prev!.participants.map(p =>
+          p.id === participantId
             ? { ...p, display_name: result.participant.display_name }
             : p
         )
       }))
-      
+
       setEditingParticipant(null)
       setEditingName('')
-      
+
     } catch (error) {
       console.error('Errore:', error)
       alert('Errore durante l\'aggiornamento del nome')
@@ -271,7 +271,7 @@ function RoomSettingsContent() {
 
     const action = room.status === 'paused' ? 'riprendere' : 'mettere in pausa'
     const confirmed = confirm(`Sei sicuro di voler ${action} l'asta?`)
-    
+
     if (!confirmed) return
 
     setIsPausing(true)
@@ -318,7 +318,7 @@ function RoomSettingsContent() {
 
   if (loading) {
     return (
-      <div className="container mx-auto px-4 py-8">
+      <div className="container-fluid mx-auto px-4 py-8">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
           <p className="mt-2 text-gray-600">Caricamento...</p>
@@ -329,7 +329,7 @@ function RoomSettingsContent() {
 
   if (!roomCode) {
     return (
-      <div className="container mx-auto px-4 py-8">
+      <div className="container-fluid mx-auto px-4 py-8">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-red-600 mb-4">Codice asta mancante</h1>
           <p className="text-gray-600 mb-4">Specifica il codice dell&apos;asta nei parametri URL</p>
@@ -343,7 +343,7 @@ function RoomSettingsContent() {
 
   if (!room) {
     return (
-      <div className="container mx-auto px-4 py-8">
+      <div className="container-fluid mx-auto px-4 py-8">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-red-600 mb-4">Asta non trovata</h1>
           <p className="text-gray-600 mb-4">L&apos;asta con codice &quot;{roomCode}&quot; non esiste</p>
@@ -356,7 +356,7 @@ function RoomSettingsContent() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container-fluid mx-auto px-4 py-8">
       <div className="max-w-4xl mx-auto">
         {/* Breadcrumbs */}
         <nav className="flex items-center space-x-2 text-sm text-gray-600 mb-6">
@@ -366,7 +366,7 @@ function RoomSettingsContent() {
           </Link>
           <ChevronRight className="h-4 w-4" />
           <Link href={`/auction/${room.code}`} className="hover:text-gray-900 transition-colors">
-            Asta {room.code}
+            Asta
           </Link>
           <ChevronRight className="h-4 w-4" />
           <span className="text-gray-900 font-medium">Impostazioni</span>
@@ -376,13 +376,12 @@ function RoomSettingsContent() {
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-3xl font-bold text-black flex items-center gap-2">
-              <Settings className="h-8 w-8" />
               Impostazioni Asta
             </h1>
             <p className="text-gray-600 mt-2">Gestisci le impostazioni e i link dei partecipanti</p>
           </div>
           <Link href={`/auction/${room.code}`}>
-            <Button variant="outline">Vai all&apos;Asta</Button>
+            <Button variant="outline"><Settings className="h-4 w-4"/> Admin asta</Button>
           </Link>
         </div>
 
@@ -425,8 +424,8 @@ function RoomSettingsContent() {
                 Controllo Asta
               </CardTitle>
               <CardDescription>
-                {room.status === 'paused' 
-                  ? 'L\'asta è attualmente in pausa. Puoi riprenderla quando sei pronto.' 
+                {room.status === 'paused'
+                  ? 'L\'asta è attualmente in pausa. Puoi riprenderla quando sei pronto.'
                   : 'Puoi mettere in pausa l\'asta per interromperla temporaneamente.'}
               </CardDescription>
             </CardHeader>
@@ -621,7 +620,7 @@ function RoomSettingsContent() {
 // Componente di loading
 function RoomSettingsLoading() {
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container-fluid mx-auto px-4 py-8">
       <div className="text-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
         <p className="mt-2 text-gray-600">Caricamento...</p>
