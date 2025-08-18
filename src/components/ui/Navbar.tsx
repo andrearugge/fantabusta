@@ -17,7 +17,7 @@ export default function Navbar() {
           
           {/* Credits */}
           <div className="text-sm text-gray-600">
-            Made by <span className="font-semibold text-black">Andrea</span>
+            Seguimi su <Link className="font-medium text-black" href={'https://tinyurl.com/7ywkcjfw'} target="_blank">Instagram</Link>
           </div>
         </div>
       </div>
