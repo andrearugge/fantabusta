@@ -111,7 +111,7 @@ export default function ActiveRooms() {
                 </div>
                 <div className="flex items-center gap-1">
                   <DollarSign className="h-4 w-4 text-gray-500" />
-                  <span>{room.budget_default}M€</span>
+                  <span>{room.budget_default}M</span>
                 </div>
               </div>
 

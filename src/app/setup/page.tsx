@@ -217,7 +217,7 @@ export default function SetupPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
-                  <Label htmlFor="budget">Budget (M€)</Label>
+                  <Label htmlFor="budget">Budget (M)</Label>
                   <Input
                     id="budget"
                     type="number"

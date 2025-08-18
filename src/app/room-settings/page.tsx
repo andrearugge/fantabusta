@@ -401,7 +401,7 @@ function RoomSettingsContent() {
               </div>
               <div>
                 <Label>Budget Iniziale</Label>
-                <Input value={`${room.budget_default}M€`} readOnly className="mt-1" />
+                <Input value={`${room.budget_default}M`} readOnly className="mt-1" />
               </div>
             </div>
             <div>
