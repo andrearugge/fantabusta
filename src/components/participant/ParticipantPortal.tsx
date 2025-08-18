@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Progress } from '@/components/ui/progress'
-import { User, DollarSign, Users, Clock, CheckCircle } from 'lucide-react'
+import { User, DollarSign, Users, Clock, CheckCircle, Bell } from 'lucide-react'
 import { Participant, Player } from '@/types'
 import { AuctionTimer } from '../auction/AuctionTimer'
 import PlayerSelector from './PlayerSelector'
@@ -33,7 +33,7 @@ export default function ParticipantPortal({
   // Stati per i risultati dell'asta
   const [showResults, setShowResults] = useState(false)
   const [auctionResults, setAuctionResults] = useState<any>(null)
-  const [isResultsReady, setIsResultsReady] = useState(false) // Nuovo stato per evitare doppia apertura
+  const [isResultsReady, setIsResultsReady] = useState(false)
 
   // Stati per la conferma dell'offerta
   const [hasMadeBid, setHasMadeBid] = useState(false)
@@ -43,6 +43,12 @@ export default function ParticipantPortal({
   const [localParticipant, setLocalParticipant] = useState(participant)
   const [localMyPlayers, setLocalMyPlayers] = useState<Player[]>(myPlayers)
   const [localPlayerCounts, setLocalPlayerCounts] = useState(playerCounts)
+
+  // Nuovo stato per il turno corrente con notifiche
+  const [currentTurn, setCurrentTurn] = useState(0)
+  const [isMyTurn, setIsMyTurn] = useState(false)
+  const [showTurnNotification, setShowTurnNotification] = useState(false)
+  const [justBecameMyTurn, setJustBecameMyTurn] = useState(false)
 
   const supabase = createClient()
 
@@ -56,7 +62,7 @@ export default function ParticipantPortal({
     }
   }, [])
 
-  // Funzione per ricaricare i dati dal database
+  // Funzione per ricaricare i dati dal database - ottimizzata con useCallback
   const refreshPlayerData = useCallback(async () => {
     try {
       // Ricarica i giocatori assegnati al partecipante
@@ -94,6 +100,31 @@ export default function ParticipantPortal({
       console.error('Errore nel refresh dei dati:', error)
     }
   }, [participant.id, supabase, updatePlayerCounts])
+
+  // Funzione per saltare il turno
+  const skipTurn = useCallback(async () => {
+    try {
+      const response = await fetch('/api/rooms/skip-turn', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          room_id: participant.room_id
+        })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Errore nel saltare il turno')
+      }
+
+      const result = await response.json()
+      console.log('Turno saltato con successo:', result)
+    } catch (error) {
+      console.error('Errore nel saltare il turno:', error)
+    }
+  }, [participant.room_id])
 
   // Calcola il budget massimo disponibile per un'offerta
   const calculateMaxBudget = useCallback(() => {
@@ -149,10 +180,6 @@ export default function ParticipantPortal({
     }
   }
 
-  // Nuovo stato per il turno corrente
-  const [currentTurn, setCurrentTurn] = useState(0)
-  const [isMyTurn, setIsMyTurn] = useState(false)
-
   // Funzione per verificare se è il turno del partecipante
   const checkIfMyTurn = useCallback(async () => {
     try {
@@ -168,12 +195,26 @@ export default function ParticipantPortal({
       }
 
       const newCurrentTurn = roomData.current_turn || 0
+      const newIsMyTurn = participant.turn_order === newCurrentTurn
+
+      // Controlla se è appena diventato il mio turno
+      if (newIsMyTurn && !isMyTurn) {
+        setJustBecameMyTurn(true)
+        setShowTurnNotification(true)
+
+        // Nascondi la notifica dopo 5 secondi
+        setTimeout(() => {
+          setShowTurnNotification(false)
+          setJustBecameMyTurn(false)
+        }, 5000)
+      }
+
       setCurrentTurn(newCurrentTurn)
-      setIsMyTurn(participant.turn_order === newCurrentTurn)
+      setIsMyTurn(newIsMyTurn)
     } catch (error) {
       console.error('Errore verifica turno:', error)
     }
-  }, [supabase, participant.room_id, participant.turn_order])
+  }, [supabase, participant.room_id, participant.turn_order, isMyTurn])
 
   // Carica il turno corrente all'avvio
   useEffect(() => {
@@ -182,7 +223,8 @@ export default function ParticipantPortal({
 
   // Realtime subscriptions
   useEffect(() => {
-    const channel = supabase
+    // Crea due channel: uno per gli eventi di asta e uno specifico per la room
+    const auctionChannel = supabase
       .channel('auction_events')
       .on('broadcast', { event: 'player_selected' }, (payload) => {
         setCurrentAuction(payload.payload)
@@ -198,64 +240,101 @@ export default function ParticipantPortal({
       .on('broadcast', { event: 'timer_update' }, (payload) => {
         setTimeRemaining(payload.payload.timeRemaining)
       })
-      .on('broadcast', { event: 'turn_changed' }, (payload) => {
-        // Aggiorna il turno corrente
-        setCurrentTurn(payload.payload.newTurn)
-        setIsMyTurn(participant.turn_order === payload.payload.newTurn)
-      })
       .on('broadcast', { event: 'auction_closed' }, (payload) => {
         setCurrentAuction(null)
         setTimeRemaining(0)
-        
-        // Evita doppia apertura del modale
-        if (!isResultsReady) {
-          setIsResultsReady(true)
-          
-          // Gestisci caso senza offerte basandosi sul flag noOffers dall'API
-          if (payload.payload.noOffers === true) {
-            // Caso senza offerte - assegnato al currentTurn per 1M
-            setAuctionResults({
-              ...payload.payload,
-              noOffers: true,
-              message: payload.payload.message || 'Nessuna offerta ricevuta'
-            })
-          } else {
-            // Caso normale con offerte valide
-            setAuctionResults({
-              ...payload.payload,
-              noOffers: false // Assicurati che sia esplicitamente false
-            })
+
+        // Usa una ref per evitare dipendenze nel useEffect
+        setIsResultsReady(prev => {
+          if (!prev) {
+            // Gestisci caso senza offerte basandosi sul flag noOffers dall'API
+            if (payload.payload.noOffers === true) {
+              // Caso senza offerte - assegnato al currentTurn per 1M
+              setAuctionResults({
+                ...payload.payload,
+                noOffers: true,
+                message: payload.payload.message || 'Nessuna offerta ricevuta'
+              })
+            } else {
+              // Caso normale con offerte valide
+              setAuctionResults({
+                ...payload.payload,
+                noOffers: false // Assicurati che sia esplicitamente false
+              })
+            }
+
+            setShowResults(true)
+
+            // Aggiorna sempre i dati dal database per tutti i partecipanti
+            refreshPlayerData()
+
+            // Chiudi risultati dopo 5 secondi
+            setTimeout(async () => {
+              setShowResults(false)
+              setIsResultsReady(false)
+              if (isMyTurn) {
+                await skipTurn()
+              }
+            }, 5000)
+
+            return true
           }
-          
-          setShowResults(true)
-          
-          // Aggiorna sempre i dati dal database per tutti i partecipanti
-          refreshPlayerData()
-          
-          // Chiudi risultati dopo 5 secondi
-          setTimeout(() => {
-            setShowResults(false)
-            setIsResultsReady(false) // Reset per prossima asta
-          }, 5000)
-        }
+          return prev
+        })
+      })
+      .subscribe()
+
+    // Channel specifico per la room per eventi di turno
+    const roomChannel = supabase
+      .channel(`room-${participant.room_id}`)
+      .on('broadcast', { event: 'turn_changed' }, (payload) => {
+        console.log('Ricevuto turn_changed:', payload.payload)
+
+        // Aggiorna il turno corrente con notifica real-time
+        const newTurn = payload.payload.newTurn
+        const newIsMyTurn = participant.turn_order === newTurn
+
+        console.log(`Turno cambiato: ${newTurn}, È il mio turno: ${newIsMyTurn} (turn_order: ${participant.turn_order})`)
+
+        // Usa setState con callback per evitare dipendenze
+        setIsMyTurn(prevIsMyTurn => {
+          // Controlla se è appena diventato il mio turno
+          if (newIsMyTurn && !prevIsMyTurn) {
+            setJustBecameMyTurn(true)
+            setShowTurnNotification(true)
+
+            // Nascondi la notifica dopo 5 secondi
+            setTimeout(() => {
+              setShowTurnNotification(false)
+              setJustBecameMyTurn(false)
+            }, 5000)
+          }
+
+          return newIsMyTurn
+        })
+
+        setCurrentTurn(newTurn)
       })
       .subscribe()
 
     return () => {
-      supabase.removeChannel(channel)
+      supabase.removeChannel(auctionChannel)
+      supabase.removeChannel(roomChannel)
     }
-  }, [participant.id, participant.turn_order, refreshPlayerData, supabase, isResultsReady])
+  }, [participant.id, participant.room_id, participant.turn_order, supabase, refreshPlayerData])
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       {/* Header con informazioni partecipante */}
-      <Card>
+      <Card className={isMyTurn ? 'border-green-500 shadow-lg' : ''}>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <User className="h-5 w-5" />
             {localParticipant.display_name}
             {isMyTurn && (
-              <Badge className="ml-2 bg-green-600">È il tuo turno!</Badge>
+              <Badge className={`ml-2 bg-green-600 ${justBecameMyTurn ? 'animate-bounce' : ''}`}>
+                È il tuo turno!
+              </Badge>
             )}
           </CardTitle>
           <CardDescription>
@@ -298,14 +377,16 @@ export default function ParticipantPortal({
 
       {/* Selezione calciatore - visibile solo se è il turno del partecipante */}
       {isMyTurn && !currentAuction && (
-        <PlayerSelector
-          roomId={participant.room_id}
-          participantId={participant.id}
-          currentTurn={currentTurn}
-          onPlayerSelected={(player) => {
-            console.log('Calciatore selezionato:', player.nome)
-          }}
-        />
+        <div className={justBecameMyTurn ? 'animate-fadeIn' : ''}>
+          <PlayerSelector
+            roomId={participant.room_id}
+            participantId={participant.id}
+            currentTurn={currentTurn}
+            onPlayerSelected={(player) => {
+              console.log('Calciatore selezionato:', player.nome)
+            }}
+          />
+        </div>
       )}
 
       {/* La mia squadra */}
@@ -483,18 +564,22 @@ export default function ParticipantPortal({
                   )}
                 </>
               )}
-
-              <Button
-                onClick={() => setShowResults(false)}
-                className="w-full mt-4"
-                variant="outline"
-              >
-                Chiudi
-              </Button>
             </div>
           )}
         </DialogContent>
       </Dialog>
-    </div >
+
+      {/* Stili CSS per le animazioni */}
+      <style jsx>{`
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .animate-fadeIn {
+          animation: fadeIn 0.5s ease-out;
+        }
+      `}</style>
+    </div>
   )
 }

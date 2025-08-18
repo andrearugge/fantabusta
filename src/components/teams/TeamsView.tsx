@@ -62,7 +62,19 @@ export default function TeamsView({
         A: playersByRole.filter(p => p.ruolo === 'A')
       },
       totalSpent: playersByRole.reduce((sum, p) => sum + (p.purchase_price || 0), 0),
-      totalPlayers: playersByRole.length
+      totalPlayers: playersByRole.length,
+      // Calcola la massima offerta possibile
+      maxBid: (() => {
+        const remainingSlots = 25 - playersByRole.length
+        return Math.max(1, participant.budget - remainingSlots)
+      })(),
+      // Calcola spesa per reparto
+      spentByRole: {
+        P: playersByRole.filter(p => p.ruolo === 'P').reduce((sum, p) => sum + (p.purchase_price || 0), 0),
+        D: playersByRole.filter(p => p.ruolo === 'D').reduce((sum, p) => sum + (p.purchase_price || 0), 0),
+        C: playersByRole.filter(p => p.ruolo === 'C').reduce((sum, p) => sum + (p.purchase_price || 0), 0),
+        A: playersByRole.filter(p => p.ruolo === 'A').reduce((sum, p) => sum + (p.purchase_price || 0), 0)
+      }
     }
 
     return teamData
@@ -140,33 +152,13 @@ export default function TeamsView({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-black">Formazioni</h1>
-          {/* Breadcrumbs */}
-          <nav className="flex items-center space-x-2 text-sm text-gray-600 mt-2">
-            <Link href="/" className="flex items-center hover:text-gray-900 transition-colors">
-              <Home className="h-4 w-4 mr-1" />
-              Homepage
-            </Link>
-            <ChevronRight className="h-4 w-4" />
-            <Link href={`/auction/${room.code}`} className="flex items-center hover:text-gray-900 transition-colors">
-              <Trophy className="h-4 w-4 mr-1" />
-              Asta
-            </Link>
-            <ChevronRight className="h-4 w-4" />
-            <span className="text-gray-900 font-medium flex items-center">
-              <Users className="h-4 w-4 mr-1" />
-              Formazioni
-            </span>
-          </nav>
+          <p className="text-xl font-bold text-black">Formazioni</p>
         </div>
         <div className="flex gap-2">
-          <Link href={`/auction/${room.code}`}>
-            <Button variant="outline"><Settings className="h-4 w-4" /> Admin asta</Button>
-          </Link>
           <Button
             className="flex items-center gap-2"
             variant={'outline'}
@@ -191,12 +183,15 @@ export default function TeamsView({
         {teamsByParticipant.map((team) => (
           <Card key={team.participant.id} className="h-fit">
             <CardHeader className="pb-4 px-3">
-              <CardTitle className="flex items-center justify-between">
-                <span className="text-sm">{team.participant.display_name}</span>
+              <CardTitle className="flex flex-col items-center gap-1">
+                <Badge variant="default">
+                  Max: {team.maxBid}M
+                </Badge>
+                <div className="text-sm">{team.participant.display_name}</div>
               </CardTitle>
               <div className="flex justify-between text-sm text-gray-600">
                 <Badge variant="outline">
-                  {team.totalSpent} / {team.participant.budget}M
+                  {team.totalSpent} / {room.budget_default}M
                 </Badge>
                 <Badge variant="outline">
                   {team.totalPlayers}/25
@@ -209,6 +204,7 @@ export default function TeamsView({
                 <div>
                   <h4 className="font-medium text-sm text-gray-700 mb-2 flex items-center text-xs">
                     <Badge variant="secondary" className="mr-2 text-xs">P</Badge>
+                    <Badge variant="secondary" className="mr-2 text-xs">{((team.spentByRole.P / room.budget_default) * 100).toFixed(1)}%</Badge>
                     ({team.players.P.length}/3)
                   </h4>
                   <div className="space-y-1">
@@ -238,6 +234,7 @@ export default function TeamsView({
                 <div>
                   <h4 className="font-medium text-sm text-gray-700 mb-2 flex items-center text-xs">
                     <Badge variant="secondary" className="mr-2 text-xs">D</Badge>
+                    <Badge variant="secondary" className="mr-2 text-xs">{((team.spentByRole.D / room.budget_default) * 100).toFixed(1)}%</Badge>
                     ({team.players.D.length}/8)
                   </h4>
                   <div className="space-y-1">
@@ -267,6 +264,7 @@ export default function TeamsView({
                 <div>
                   <h4 className="font-medium text-sm text-gray-700 mb-2 flex items-center text-xs">
                     <Badge variant="secondary" className="mr-2 text-xs">C</Badge>
+                    <Badge variant="secondary" className="mr-2 text-xs">{((team.spentByRole.C / room.budget_default) * 100).toFixed(1)}%</Badge>
                     ({team.players.C.length}/8)
                   </h4>
                   <div className="space-y-1">
@@ -296,6 +294,7 @@ export default function TeamsView({
                 <div>
                   <h4 className="font-medium text-gray-700 mb-2 flex items-center text-xs">
                     <Badge variant="secondary" className="mr-2 text-xs">A</Badge>
+                    <Badge variant="secondary" className="mr-2 text-xs">{((team.spentByRole.A / room.budget_default) * 100).toFixed(1)}%</Badge>
                     ({team.players.A.length}/6)
                   </h4>
                   <div className="space-y-1">
