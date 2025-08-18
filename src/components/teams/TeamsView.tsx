@@ -3,7 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Home, ChevronRight, Users, Trophy, Trash2, UserPlus } from 'lucide-react'
+import { Home, ChevronRight, Users, Trophy, Trash2, UserPlus, Download } from 'lucide-react'
 import { Room, Participant, Player } from '@/types'
 import Link from 'next/link'
 import { useState } from 'react'
@@ -40,7 +40,7 @@ export default function TeamsView({
         .select('*')
         .eq('room_id', room.id)
         .order('display_name')
-      
+
       if (updatedParticipants) {
         setLocalParticipants(updatedParticipants)
       }
@@ -52,7 +52,7 @@ export default function TeamsView({
   // Usa localParticipants invece di participants
   const teamsByParticipant = localParticipants.map(participant => {
     const playersByRole = localAssignedPlayers.filter(p => p.assigned_to === participant.id)
-    
+
     const teamData = {
       participant,
       players: {
@@ -64,30 +64,30 @@ export default function TeamsView({
       totalSpent: playersByRole.reduce((sum, p) => sum + (p.purchase_price || 0), 0),
       totalPlayers: playersByRole.length
     }
-    
+
     return teamData
   })
 
   const handleRemovePlayer = async (playerId: string, participantId: string) => {
     if (isRemoving) return
-    
+
     setIsRemoving(playerId)
-    
+
     try {
       const response = await fetch('/api/players/remove', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ playerId, participantId })
       })
-      
+
       const result = await response.json()
-      
+
       if (response.ok) {
         // Aggiorna i giocatori locali
-        setLocalAssignedPlayers(prev => 
+        setLocalAssignedPlayers(prev =>
           prev.filter(p => p.id !== playerId)
         )
-        
+
         // AGGIUNGI: Ricarica i dati dei partecipanti dal database
         await refreshParticipants()
       } else {
@@ -105,6 +105,39 @@ export default function TeamsView({
   const handlePlayerAssigned = () => {
     window.location.reload()
   }
+
+  // Funzione per esportare le rose in formato CSV
+  const exportToCSV = () => {
+    // Crea il contenuto CSV con separatori tra team
+    let csvContent = '';
+
+    teamsByParticipant.forEach((team, index) => {
+      // Aggiungi separatore prima di ogni team (tranne il primo)
+      if (index > 0) {
+        csvContent += '$,$,$\n';
+      }
+      
+      [...team.players.P, ...team.players.D, ...team.players.C, ...team.players.A].forEach(player => {
+        csvContent += `${team.participant.display_name},${player.player_id || ''},${player.purchase_price || 0}\n`;
+      });
+    });
+
+    // Crea e scarica il file
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    
+    if (link.download !== undefined) {
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      const roomName = 'asta';
+      const fileName = `export_${roomName.replace(/\s+/g, '_')}.csv`;
+      link.setAttribute('download', fileName);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -132,13 +165,23 @@ export default function TeamsView({
           <h1 className="text-3xl font-bold text-black">Formazioni</h1>
           <p className="text-gray-600">Visualizza tutte le squadre dei partecipanti</p>
         </div>
-        <Button
-          onClick={() => setIsAssignModalOpen(true)}
-          className="flex items-center gap-2"
-        >
-          <UserPlus className="h-4 w-4" />
-          Assegna Calciatore
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            className="flex items-center gap-2"
+            variant={'outline'}
+            onClick={exportToCSV}
+          >
+            <Download className="h-4 w-4" />
+            Esporta rose in .csv
+          </Button>
+          <Button
+            onClick={() => setIsAssignModalOpen(true)}
+            className="flex items-center gap-2"
+          >
+            <UserPlus className="h-4 w-4" />
+            Assegna Calciatore
+          </Button>
+        </div>
       </div>
 
       {/* Grid delle formazioni */}

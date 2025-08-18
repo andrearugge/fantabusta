@@ -13,7 +13,7 @@ export interface Database {
         Row: {
           id: string
           code: string
-          status: 'setup' | 'active' | 'completed'
+          status: 'setup' | 'active' | 'completed' | 'paused'
           budget_default: number
           current_turn: number
           created_at: string
@@ -21,7 +21,7 @@ export interface Database {
         Insert: {
           id?: string
           code: string
-          status?: 'setup' | 'active' | 'completed'
+          status?: 'setup' | 'active' | 'completed' | 'paused'
           budget_default?: number
           current_turn?: number
           created_at?: string
@@ -29,7 +29,7 @@ export interface Database {
         Update: {
           id?: string
           code?: string
-          status?: 'setup' | 'active' | 'completed'
+          status?: 'setup' | 'active' | 'completed' | 'paused'
           budget_default?: number
           current_turn?: number
           created_at?: string
@@ -74,6 +74,7 @@ export interface Database {
           nome: string
           ruolo: 'P' | 'D' | 'C' | 'A'
           squadra: string
+          player_id: number | null
           is_assigned: boolean
           assigned_to: string | null
           purchase_price: number
@@ -85,6 +86,7 @@ export interface Database {
           nome: string
           ruolo: 'P' | 'D' | 'C' | 'A'
           squadra: string
+          player_id?: number | null
           is_assigned?: boolean
           assigned_to?: string | null
           purchase_price?: number
@@ -96,6 +98,7 @@ export interface Database {
           nome?: string
           ruolo?: 'P' | 'D' | 'C' | 'A'
           squadra?: string
+          player_id?: number | null
           is_assigned?: boolean
           assigned_to?: string | null
           purchase_price?: number

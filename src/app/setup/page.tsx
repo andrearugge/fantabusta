@@ -45,15 +45,22 @@ export default function SetupPage() {
       const line = lines[i].trim()
       if (!line) continue // Skip empty lines
       
-      // Cambiato l'ordine: Nome,Squadra,Ruolo invece di nome,ruolo,squadra
-      const [nome, squadra, ruolo] = line.split(',')
+      // Formato corretto: id,name,role,team
+      const [player_id, nome, ruolo, squadra] = line.split(',')
       
-      if (!nome || !ruolo || !squadra) {
-        errors.push(`Riga ${i + 1}: Dati mancanti (nome: "${nome}", ruolo: "${ruolo}", squadra: "${squadra}")`)
+      if (!player_id || !nome || !ruolo || !squadra) {
+        errors.push(`Riga ${i + 1}: Dati mancanti (id: "${player_id}", name: "${nome}", role: "${ruolo}", team: "${squadra}")`)
         continue
       }
       
       const cleanRuolo = ruolo.trim().toUpperCase()
+      const playerId = parseInt(player_id.trim())
+      
+      // Validazione player_id
+      if (isNaN(playerId)) {
+        errors.push(`Riga ${i + 1}: ID non valido "${player_id}" per giocatore "${nome}". Deve essere un numero`)
+        continue
+      }
       
       // Validazione ruolo
       if (!validRoles.includes(cleanRuolo)) {
@@ -62,6 +69,7 @@ export default function SetupPage() {
       }
       
       players.push({
+        player_id: playerId,
         nome: nome.trim(),
         ruolo: cleanRuolo as 'P' | 'D' | 'C' | 'A',
         squadra: squadra.trim()
@@ -71,7 +79,7 @@ export default function SetupPage() {
     // Mostra errori se presenti
     if (errors.length > 0) {
       console.error('Errori nel CSV:', errors)
-      alert(`Errori trovati nel CSV:\\n${errors.join('\\n')}`)
+      alert(`Errori trovati nel CSV:\n${errors.join('\n')}`)
     }
     
     return players

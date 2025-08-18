@@ -8,9 +8,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
-import { Copy, Check, Users, Settings, Edit2, Save, X, Home, ChevronRight } from 'lucide-react'
+import { Copy, Check, Users, Settings, Home, ChevronRight, Upload, FileText, AlertTriangle, Play, Pause } from 'lucide-react'
 import Link from 'next/link'
 import { getBaseUrl } from '@/lib/utils/url'
+import { CSVPlayer } from '@/types'
 
 interface Participant {
   id: string
@@ -23,7 +24,7 @@ interface Participant {
 interface Room {
   id: string
   code: string
-  status: 'setup' | 'active' | 'completed'
+  status: 'setup' | 'active' | 'completed' | 'paused'
   budget_default: number
   created_at: string
   participants: Participant[]
@@ -34,14 +35,19 @@ function RoomSettingsContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const roomCode = searchParams.get('code')
-  
+
   const [room, setRoom] = useState<Room | null>(null)
   const [loading, setLoading] = useState(true)
-  const [editingName, setEditingName] = useState(false)
-  const [newName, setNewName] = useState('')
   const [copiedLinks, setCopiedLinks] = useState<Set<string>>(new Set())
-  const [updating, setUpdating] = useState(false)
   const [baseUrl, setBaseUrl] = useState('')
+
+  // Stati per re-importazione CSV
+  const [csvData, setCsvData] = useState<CSVPlayer[]>([])
+  const [csvFileName, setCsvFileName] = useState('')
+  const [isReimporting, setIsReimporting] = useState(false)
+
+  // Stati per controllo asta
+  const [isPausing, setIsPausing] = useState(false)
 
   useEffect(() => {
     // Imposta l'URL di base quando il componente si monta
@@ -58,13 +64,12 @@ function RoomSettingsContent() {
 
   const fetchRoom = async () => {
     if (!roomCode) return
-    
+
     try {
       const response = await fetch(`/api/rooms/${roomCode}`)
       if (response.ok) {
         const { room } = await response.json()
         setRoom(room)
-        setNewName(room.code)
       } else {
         console.error('Errore caricamento room')
       }
@@ -72,32 +77,6 @@ function RoomSettingsContent() {
       console.error('Errore:', error)
     } finally {
       setLoading(false)
-    }
-  }
-
-  const updateRoomName = async () => {
-    if (!roomCode || !newName.trim()) return
-    
-    setUpdating(true)
-    try {
-      const response = await fetch(`/api/rooms/${roomCode}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newName })
-      })
-      
-      if (response.ok) {
-        setRoom(prev => prev ? { ...prev, code: newName } : null)
-        setEditingName(false)
-        router.push(`/room-settings?code=${encodeURIComponent(newName)}`)
-      } else {
-        alert('Errore aggiornamento nome')
-      }
-    } catch (error) {
-      console.error('Errore:', error)
-      alert('Errore aggiornamento nome')
-    } finally {
-      setUpdating(false)
     }
   }
 
@@ -117,14 +96,171 @@ function RoomSettingsContent() {
     }
   }
 
+  // Funzione per parsing CSV
+  const parseCsv = (text: string): CSVPlayer[] => {
+    const lines = text.trim().split('\n')
+    const players: CSVPlayer[] = []
+    const validRoles = ['P', 'D', 'C', 'A']
+    const errors: string[] = []
+
+    for (let i = 1; i < lines.length; i++) { // Skip header
+      const line = lines[i].trim()
+      if (!line) continue // Skip empty lines
+
+      // Formato corretto: id,name,role,team
+      const [player_id, nome, ruolo, squadra] = line.split(',')
+
+      if (!player_id || !nome || !ruolo || !squadra) {
+        errors.push(`Riga ${i + 1}: Dati mancanti (id: "${player_id}", name: "${nome}", role: "${ruolo}", team: "${squadra}")`)
+        continue
+      }
+
+      const cleanRuolo = ruolo.trim().toUpperCase()
+      const playerId = parseInt(player_id.trim())
+
+      // Validazione player_id
+      if (isNaN(playerId)) {
+        errors.push(`Riga ${i + 1}: ID non valido "${player_id}" per giocatore "${nome}". Deve essere un numero`)
+        continue
+      }
+
+      // Validazione ruolo
+      if (!validRoles.includes(cleanRuolo)) {
+        errors.push(`Riga ${i + 1}: Ruolo non valido "${ruolo}" per giocatore "${nome}". Ruoli validi: P, D, C, A`)
+        continue
+      }
+
+      players.push({
+        player_id: playerId,
+        nome: nome.trim(),
+        ruolo: cleanRuolo as 'P' | 'D' | 'C' | 'A',
+        squadra: squadra.trim()
+      })
+    }
+
+    // Mostra errori se presenti
+    if (errors.length > 0) {
+      console.error('Errori nel CSV:', errors)
+      alert(`Errori trovati nel CSV:\n${errors.join('\n')}`)
+    }
+
+    return players
+  }
+
+  // Gestione upload file CSV
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    if (!file.name.endsWith('.csv')) {
+      alert('Per favore seleziona un file CSV')
+      return
+    }
+
+    setCsvFileName(file.name)
+
+    try {
+      const text = await file.text()
+      const parsed = parseCsv(text)
+      setCsvData(parsed)
+    } catch (error) {
+      console.error('Errore lettura file CSV:', error)
+      alert('Errore nella lettura del file CSV')
+      setCsvData([])
+      setCsvFileName('')
+    }
+  }
+
+  // Funzione per re-importare i giocatori
+  const handleReimportPlayers = async () => {
+    if (!room || csvData.length === 0) return
+
+    const confirmed = confirm(
+      `Sei sicuro di voler re-importare ${csvData.length} giocatori?\n\n` +
+      'ATTENZIONE: Questa operazione cancellerà TUTTI i giocatori esistenti e le relative offerte.'
+    )
+
+    if (!confirmed) return
+
+    setIsReimporting(true)
+    try {
+      const response = await fetch('/api/rooms/reimport-players', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          roomId: room.id,
+          players: csvData
+        })
+      })
+
+      const result = await response.json()
+
+      if (response.ok) {
+        alert(`✅ ${result.message}`)
+        setCsvData([])
+        setCsvFileName('')
+        // Reset del file input
+        const fileInput = document.getElementById('csv-file') as HTMLInputElement
+        if (fileInput) fileInput.value = ''
+      } else {
+        alert(`❌ Errore: ${result.error}`)
+      }
+    } catch (error) {
+      console.error('Errore re-importazione:', error)
+      alert('❌ Errore durante la re-importazione')
+    } finally {
+      setIsReimporting(false)
+    }
+  }
+
+  // Funzione per mettere in pausa/riprendere l'asta
+  const handlePauseToggle = async () => {
+    if (!room) return
+
+    const action = room.status === 'paused' ? 'riprendere' : 'mettere in pausa'
+    const confirmed = confirm(`Sei sicuro di voler ${action} l'asta?`)
+    
+    if (!confirmed) return
+
+    setIsPausing(true)
+    try {
+      const response = await fetch('/api/rooms/pause', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          roomId: room.id,
+          action: room.status === 'paused' ? 'resume' : 'pause'
+        })
+      })
+
+      const result = await response.json()
+
+      if (response.ok) {
+        setRoom(prev => prev ? { ...prev, status: result.newStatus } : null)
+        alert(`✅ Asta ${result.newStatus === 'paused' ? 'messa in pausa' : 'ripresa'} con successo`)
+      } else {
+        alert(`❌ Errore: ${result.error}`)
+      }
+    } catch (error) {
+      console.error('Errore controllo asta:', error)
+      alert('❌ Errore durante il controllo dell\'asta')
+    } finally {
+      setIsPausing(false)
+    }
+  }
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'setup':
         return <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">In Configurazione</Badge>
       case 'active':
         return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">Attiva</Badge>
+      case 'paused':
+        return <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">In Pausa</Badge>
+      case 'completed':
+        return <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-200">Completata</Badge>
       default:
-        return <Badge variant="outline">Completata</Badge>
+        return <Badge variant="outline">Sconosciuto</Badge>
     }
   }
 
@@ -209,45 +345,8 @@ function RoomSettingsContent() {
           <CardContent className="space-y-4">
             <div className="grid md:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="room-name">Nome Asta</Label>
-                {editingName ? (
-                  <div className="flex gap-2 mt-1">
-                    <Input
-                      id="room-name"
-                      value={newName}
-                      onChange={(e) => setNewName(e.target.value)}
-                      placeholder="Nome asta"
-                    />
-                    <Button
-                      size="sm"
-                      onClick={updateRoomName}
-                      disabled={updating || !newName.trim()}
-                    >
-                      {updating ? '...' : <Save className="h-4 w-4" />}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => {
-                        setEditingName(false)
-                        setNewName(room.code)
-                      }}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2 mt-1">
-                    <Input value={room.code} readOnly />
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setEditingName(true)}
-                    >
-                      <Edit2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                )}
+                <Label>Nome Asta</Label>
+                <Input value={room.code} readOnly className="mt-1" />
               </div>
               <div>
                 <Label>Budget Iniziale</Label>
@@ -256,12 +355,124 @@ function RoomSettingsContent() {
             </div>
             <div>
               <Label>Data Creazione</Label>
-              <Input 
-                value={new Date(room.created_at).toLocaleString('it-IT')} 
-                readOnly 
-                className="mt-1" 
+              <Input
+                value={new Date(room.created_at).toLocaleString('it-IT')}
+                readOnly
+                className="mt-1"
               />
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Controllo Asta */}
+        {(room.status === 'active' || room.status === 'paused') && (
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                {room.status === 'paused' ? <Play className="h-5 w-5" /> : <Pause className="h-5 w-5" />}
+                Controllo Asta
+              </CardTitle>
+              <CardDescription>
+                {room.status === 'paused' 
+                  ? 'L\'asta è attualmente in pausa. Puoi riprenderla quando sei pronto.' 
+                  : 'Puoi mettere in pausa l\'asta per interromperla temporaneamente.'}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button
+                onClick={handlePauseToggle}
+                disabled={isPausing}
+                variant={room.status === 'paused' ? 'default' : 'outline'}
+                className="w-full"
+              >
+                {isPausing ? (
+                  'Operazione in corso...'
+                ) : (
+                  <>
+                    {room.status === 'paused' ? (
+                      <><Play className="h-4 w-4 mr-2" />Riprendi Asta</>
+                    ) : (
+                      <><Pause className="h-4 w-4 mr-2" />Metti in Pausa</>
+                    )}
+                  </>
+                )}
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Re-importazione Giocatori */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Upload className="h-5 w-5" />
+              Re-importazione Giocatori
+            </CardTitle>
+            <CardDescription>
+              Carica un nuovo file CSV per sostituire tutti i giocatori esistenti
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {room?.status === 'active' && (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <div className="flex items-center gap-2 text-yellow-800">
+                  <AlertTriangle className="h-5 w-5" />
+                  <span className="font-medium">Asta in corso</span>
+                </div>
+                <p className="text-yellow-700 mt-1">
+                  Non è possibile re-importare giocatori durante un'asta attiva
+                </p>
+              </div>
+            )}
+
+            <div>
+              <Label htmlFor="csv-file">File CSV Giocatori</Label>
+              <Input
+                id="csv-file"
+                type="file"
+                accept=".csv"
+                onChange={handleFileUpload}
+                disabled={room?.status === 'active'}
+                className="mt-1"
+              />
+              <p className="text-sm text-gray-500 mt-1">
+                Formato richiesto: id,name,role,team (P/D/C/A)
+              </p>
+            </div>
+
+            {csvFileName && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-center gap-2 text-blue-800">
+                  <FileText className="h-5 w-5" />
+                  <span className="font-medium">{csvFileName}</span>
+                </div>
+                <p className="text-blue-700 mt-1">
+                  {csvData.length} giocatori trovati
+                </p>
+
+                {csvData.length > 0 && (
+                  <div className="mt-3">
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-3">
+                      <div className="flex items-center gap-2 text-red-800">
+                        <AlertTriangle className="h-4 w-4" />
+                        <span className="font-medium">Attenzione</span>
+                      </div>
+                      <p className="text-red-700 text-sm mt-1">
+                        Questa operazione cancellerà TUTTI i giocatori esistenti e le relative offerte
+                      </p>
+                    </div>
+
+                    <Button
+                      onClick={handleReimportPlayers}
+                      disabled={isReimporting || room?.status === 'active'}
+                      className="w-full"
+                    >
+                      {isReimporting ? 'Re-importazione in corso...' : `Re-importa ${csvData.length} giocatori`}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -281,42 +492,42 @@ function RoomSettingsContent() {
               {room.participants
                 .sort((a, b) => a.turn_order - b.turn_order)
                 .map((participant) => (
-                <div key={participant.id} className="border rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline">#{participant.turn_order + 1}</Badge>
-                      <span className="font-semibold">{participant.display_name}</span>
+                  <div key={participant.id} className="border rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline">#{participant.turn_order + 1}</Badge>
+                        <span className="font-semibold">{participant.display_name}</span>
+                      </div>
                     </div>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <div>
-                      <Label className="text-xs text-gray-500">Link Partecipazione</Label>
-                      <div className="flex gap-2">
-                        <Input 
-                          value={`${baseUrl}/p/${participant.join_token}`}
-                          readOnly 
-                          className="font-mono text-sm"
-                        />
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => copyToClipboard(
-                            `${baseUrl}/p/${participant.join_token}`,
-                            participant.id
-                          )}
-                        >
-                          {copiedLinks.has(participant.id) ? (
-                            <Check className="h-4 w-4 text-green-600" />
-                          ) : (
-                            <Copy className="h-4 w-4" />
-                          )}
-                        </Button>
+
+                    <div className="space-y-2">
+                      <div>
+                        <Label className="text-xs text-gray-500">Link Partecipazione</Label>
+                        <div className="flex gap-2">
+                          <Input
+                            value={`${baseUrl}/p/${participant.join_token}`}
+                            readOnly
+                            className="font-mono text-sm"
+                          />
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => copyToClipboard(
+                              `${baseUrl}/p/${participant.join_token}`,
+                              participant.id
+                            )}
+                          >
+                            {copiedLinks.has(participant.id) ? (
+                              <Check className="h-4 w-4 text-green-600" />
+                            ) : (
+                              <Copy className="h-4 w-4" />
+                            )}
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))}
             </div>
           </CardContent>
         </Card>

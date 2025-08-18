@@ -76,6 +76,7 @@ export async function POST(request: NextRequest) {
       nome: player.nome,
       ruolo: player.ruolo,
       squadra: player.squadra,
+      player_id: player.player_id,
       is_assigned: false
     }))
 

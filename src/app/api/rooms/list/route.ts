@@ -16,7 +16,7 @@ export async function GET() {
         created_at,
         participants:participants(count)
       `)
-      .in('status', ['setup', 'active'])
+      .in('status', ['setup', 'active', 'paused'])
       .order('created_at', { ascending: false })
     
     if (error) {

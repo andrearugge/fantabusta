@@ -5,12 +5,12 @@ import Link from 'next/link'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Users, DollarSign, Play, Settings } from 'lucide-react'
+import { Users, DollarSign, Play, Pause, Settings } from 'lucide-react'
 
 interface Room {
   id: string
   code: string
-  status: 'setup' | 'active' | 'completed'
+  status: 'setup' | 'active' | 'completed' | 'paused'
   budget_default: number
   created_at: string
   participants: { count: number }[]
@@ -44,13 +44,22 @@ export default function ActiveRooms() {
         return <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">In Configurazione</Badge>
       case 'active':
         return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">Attiva</Badge>
+      case 'paused':
+        return <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">In Pausa</Badge>
       default:
         return <Badge variant="outline">Completata</Badge>
     }
   }
 
   const getStatusIcon = (status: string) => {
-    return status === 'active' ? <Play className="h-4 w-4" /> : <Settings className="h-4 w-4" />
+    switch (status) {
+      case 'active':
+        return <Play className="h-4 w-4" />
+      case 'paused':
+        return <Pause className="h-4 w-4" />
+      default:
+        return <Settings className="h-4 w-4" />
+    }
   }
 
   if (loading) {

@@ -38,6 +38,7 @@ export interface AuctionState {
 }
 
 export interface CSVPlayer {
+  player_id: number
   nome: string
   ruolo: 'P' | 'D' | 'C' | 'A'
   squadra: string
