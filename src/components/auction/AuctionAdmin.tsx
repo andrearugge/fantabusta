@@ -136,7 +136,7 @@ export default function AuctionAdmin({
 
         {/* Header */}
         <div className="mb-8 flex justify-between items-center">
-          <h1 className="text-3xl font-bold text-black">Amministrazione Asta</h1>
+          <h1 className="text-lg lg:text-3xl font-bold text-black">Amministrazione Asta</h1>
           <div className="flex items-center gap-2">
             <Link href={`/room-settings?code=${room.code}`}>
               <Button variant="outline" className="cursor-pointer px-3">

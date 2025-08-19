@@ -375,7 +375,7 @@ function RoomSettingsContent() {
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-black flex items-center gap-2">
+            <h1 className="text-lg lg:text-3xl font-bold text-black flex items-center gap-2">
               Impostazioni Asta
             </h1>
             <p className="text-gray-600 mt-2">Gestisci le impostazioni e i link dei partecipanti</p>

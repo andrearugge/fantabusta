@@ -154,7 +154,7 @@ export default function TeamsView({
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex space-y-1 flex-col lg:flex-row lg:justify-between lg:items-center">
         <div>
           <p className="text-xl font-bold text-black">Formazioni</p>
         </div>

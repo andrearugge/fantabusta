@@ -29,7 +29,7 @@ function ParticipantCard({ participant, currentTurn, roomId, playersCount, total
   const isCurrentTurn = participant.turn_order === currentTurn
   
   return (
-    <Card className={`transition-all duration-200 ${
+    <Card className={`py-3 ${
       isCurrentTurn 
         ? 'ring-1 ring-blue-500 bg-blue-50 border-blue-200' 
         : ''
@@ -161,7 +161,7 @@ export default function TurnManagement({
       </Button>
 
       {/* Lista Partecipanti */}
-      <div className="grid gap-2 lg:grid-cols-8 grid-cols-4">
+      <div className="grid gap-2 lg:grid-cols-8 grid-cols-2">
         {participants.map((participant) => {
           const stats = participantStats[participant.id] || { playersCount: 0, totalSpent: 0 }
           return (

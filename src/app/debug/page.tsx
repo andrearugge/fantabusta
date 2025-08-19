@@ -8,7 +8,7 @@ export default function DebugPage() {
   return (
     <div className="container-fluid mx-auto p-6 space-y-6">
       <div className="text-center">
-        <h1 className="text-3xl font-bold">Fantabusta Debug</h1>
+        <h1 className="text-lg lg:text-3xl font-bold">Fantabusta Debug</h1>
         <p className="text-muted-foreground mt-2">
           Strumenti per testing e debugging dell&apos;applicazione
         </p>

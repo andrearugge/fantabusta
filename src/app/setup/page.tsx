@@ -162,7 +162,7 @@ export default function SetupPage() {
     <div className="min-h-screen bg-gray-50 bg-white">
       <div className="container-fluid mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto">
-          <h1 className="text-3xl font-bold text-black mb-8">Setup Nuova Asta</h1>
+          <h1 className="text-lg lg:text-3xl font-bold text-black mb-8">Setup Nuova Asta</h1>
           
           <div className="grid gap-6 md:grid-cols-2">
             {/* Partecipanti */}
