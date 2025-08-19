@@ -184,9 +184,14 @@ export default function TeamsView({
           <Card key={team.participant.id} className="h-fit">
             <CardHeader className="pb-4 px-3">
               <CardTitle className="flex flex-col items-center gap-1">
-                <Badge variant="default">
-                  Max: {team.maxBid}M
-                </Badge>
+                <div className="flex gap-1">
+                  <Badge variant="outline">
+                    B: {team.participant.budget}M
+                  </Badge>
+                  <Badge variant="default">
+                    M: {team.maxBid}M
+                  </Badge>
+                </div>
                 <div className="text-sm">{team.participant.display_name}</div>
               </CardTitle>
               <div className="flex justify-between text-sm text-gray-600">

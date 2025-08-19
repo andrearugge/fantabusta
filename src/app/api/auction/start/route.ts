@@ -147,7 +147,9 @@ async function closeAuction(roomId: string, playerId: string) {
   const supabase = await createClient()
   
   try {
-    // Recupera il timer attivo per questo giocatore
+    console.log('🔍 DEBUG: Inizio closeAuction', { roomId, playerId })
+    
+    // Recupera il timer attivo (senza participant_id che non esiste)
     const { data: activeTimer, error: timerError } = await supabase
       .from('auction_timers')
       .select('id')
@@ -157,11 +159,44 @@ async function closeAuction(roomId: string, playerId: string) {
       .single()
     
     if (timerError) {
+      console.log('❌ DEBUG: Errore timer:', timerError)
       logger.error('Errore recupero timer attivo:', timerError)
       return
     }
+    
+    console.log('✅ DEBUG: Timer trovato:', activeTimer)
 
-    // Recupera le offerte per questo auction_timer_id
+    // Recupera i dati della room per ottenere current_turn
+    const { data: roomData, error: roomError } = await supabase
+      .from('rooms')
+      .select('current_turn')
+      .eq('id', roomId)
+      .single()
+    
+    if (roomError) {
+      console.log('❌ DEBUG: Errore room:', roomError)
+      logger.error('Errore recupero room:', roomError)
+      return
+    }
+    
+    console.log('✅ DEBUG: Room data:', roomData)
+
+    // Recupera il partecipante che ha il turno corrente
+    const { data: currentTurnParticipant, error: participantError } = await supabase
+      .from('participants')
+      .select('id, display_name, budget, turn_order')
+      .eq('room_id', roomId)
+      .eq('turn_order', roomData.current_turn)
+      .single()
+    
+    if (participantError) {
+      console.log('❌ DEBUG: Errore partecipante:', participantError)
+      logger.error('Errore recupero partecipante corrente:', participantError)
+      return
+    }
+    
+    console.log('✅ DEBUG: Current turn participant:', currentTurnParticipant)
+
     const { data: bids, error: bidsError } = await supabase
       .from('bids')
       .select(`
@@ -177,29 +212,32 @@ async function closeAuction(roomId: string, playerId: string) {
       .order('created_at', { ascending: true })
 
     if (bidsError) {
+      console.log('❌ DEBUG: Errore bids:', bidsError)
       logger.error('Errore recupero offerte:', bidsError)
       return
     }
+    
+    console.log('✅ DEBUG: Bids recuperate:', bids)
 
     let winner = null
     let winningBid = 0
+    let noOffers = false
+    let message = ''
 
-    // Filtra le bid valide (amount > 0)
     const validBids = bids?.filter(bid => bid.amount > 0) || []
+    console.log('🔍 DEBUG: Valid bids:', validBids)
 
     if (validBids.length > 0) {
       const highestBid = validBids[0]
       winner = highestBid.participants
       winningBid = highestBid.amount
 
-      // Aggiorna budget del vincitore
       await supabase
         .from('participants')
         .update({ budget: winner.budget - winningBid })
         .eq('id', winner.id)
 
-      // Assegna il giocatore CON purchase_price
-      const { data: updateData, error: playerError } = await supabase
+      const { error: playerError } = await supabase
         .from('players')
         .update({ 
           is_assigned: true,
@@ -207,19 +245,11 @@ async function closeAuction(roomId: string, playerId: string) {
           purchase_price: winningBid
         })
         .eq('id', playerId)
-        .select()
       
       if (playerError) {
         logger.error('Errore assegnazione giocatore:', playerError)
-      } else {
-        logger.info('Giocatore assegnato con successo', {
-          playerId,
-          winnerId: winner.id,
-          purchase_price: winningBid
-        })
       }
 
-      // Crea record bid per lo storico
       await supabase
         .from('bids')
         .insert({
@@ -229,16 +259,59 @@ async function closeAuction(roomId: string, playerId: string) {
           auction_timer_id: activeTimer.id,
           room_id: roomId
         })
+    } else {
+      // Nessuna offerta valida: assegna al partecipante che ha avviato l'asta a 1 credito
+      console.log('⚠️ DEBUG: Nessuna offerta valida, assegno al current turn participant:', currentTurnParticipant)
+      noOffers = true
+      message = 'Nessuna offerta ricevuta - Assegnato automaticamente'
+      
+      winner = currentTurnParticipant
+      winningBid = 1
+
+      console.log('✅ DEBUG: Assegno giocatore a:', winner)
+
+      const budgetUpdate = await supabase
+        .from('participants')
+        .update({ budget: currentTurnParticipant.budget - 1 })
+        .eq('id', currentTurnParticipant.id)
+      
+      console.log('🔍 DEBUG: Budget update result:', budgetUpdate)
+
+      const { error: playerError } = await supabase
+        .from('players')
+        .update({ 
+          is_assigned: true,
+          assigned_to: currentTurnParticipant.id,
+          purchase_price: 1
+        })
+        .eq('id', playerId)
+      
+      console.log('🔍 DEBUG: Player assignment result:', { playerError })
+      
+      if (playerError) {
+        console.log('❌ DEBUG: Errore assegnazione giocatore:', playerError)
+        logger.error('Errore assegnazione giocatore senza offerte:', playerError)
+      }
+
+      const bidInsert = await supabase
+        .from('bids')
+        .insert({
+          player_id: playerId,
+          participant_id: currentTurnParticipant.id,
+          amount: 1,
+          auction_timer_id: activeTimer.id,
+          room_id: roomId
+        })
+      
+      console.log('🔍 DEBUG: Bid insert result:', bidInsert)
     }
 
-    // Recupera i dati del giocatore aggiornati
     const { data: player } = await supabase
       .from('players')
       .select('*')
       .eq('id', playerId)
       .single()
 
-    // Invia evento realtime
     await supabase
       .channel('auction_events')
       .send({
@@ -248,6 +321,8 @@ async function closeAuction(roomId: string, playerId: string) {
           player,
           winner,
           winningBid,
+          noOffers,
+          message,
           allBids: bids?.map(bid => ({
             participant_name: bid.participants?.display_name,
             amount: bid.amount
@@ -255,7 +330,6 @@ async function closeAuction(roomId: string, playerId: string) {
         }
       })
 
-    // Disattiva i timer per questo giocatore
     await supabase
       .from('auction_timers')
       .update({ is_active: false })
@@ -263,12 +337,10 @@ async function closeAuction(roomId: string, playerId: string) {
       .eq('room_id', roomId)
       .eq('is_active', true)
       
-    // AGGIUNTA: Passa automaticamente al turno successivo
     await skipTurnAfterAuction(supabase, roomId)
-      
-    logger.info('Asta chiusa automaticamente', { roomId, playerId, winner: winner?.display_name, winningBid })
     
   } catch (error) {
+    console.log('❌ DEBUG: Errore generale closeAuction:', error)
     logger.error('Errore chiusura asta automatica:', error)
   }
 }
