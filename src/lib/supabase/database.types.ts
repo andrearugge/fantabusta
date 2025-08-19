@@ -112,6 +112,7 @@ export interface Database {
           player_id: string
           participant_id: string
           amount: number
+          auction_timer_id: string
           created_at: string
         }
         Insert: {
@@ -120,6 +121,7 @@ export interface Database {
           player_id: string
           participant_id: string
           amount: number
+          auction_timer_id: string
           created_at?: string
         }
         Update: {
@@ -128,6 +130,7 @@ export interface Database {
           player_id?: string
           participant_id?: string
           amount?: number
+          auction_timer_id?: string
           created_at?: string
         }
       }

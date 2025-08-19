@@ -146,81 +146,192 @@ export async function POST(request: NextRequest) {
 async function closeAuction(roomId: string, playerId: string) {
   const supabase = await createClient()
   
-  // Recupera le offerte per questo giocatore
-  const { data: bids } = await supabase
-    .from('bids')
-    .select(`
-      *,
-      participants!inner(
-        id,
-        display_name,
-        budget
-      )
-    `)
-    .eq('player_id', playerId)
-    .order('amount', { ascending: false })
+  try {
+    // Recupera il timer attivo per questo giocatore
+    const { data: activeTimer, error: timerError } = await supabase
+      .from('auction_timers')
+      .select('id')
+      .eq('player_id', playerId)
+      .eq('room_id', roomId)
+      .eq('is_active', true)
+      .single()
+    
+    if (timerError) {
+      logger.error('Errore recupero timer attivo:', timerError)
+      return
+    }
 
-  let winner = null
-  let winningBid = 0
+    // Recupera le offerte per questo auction_timer_id
+    const { data: bids, error: bidsError } = await supabase
+      .from('bids')
+      .select(`
+        *,
+        participants!participant_id (
+          id,
+          display_name,
+          budget
+        )
+      `)
+      .eq('auction_timer_id', activeTimer.id)
+      .order('amount', { ascending: false })
+      .order('created_at', { ascending: true })
 
-  if (bids && bids.length > 0) {
-    const highestBid = bids[0]
-    winner = highestBid.participants
-    winningBid = highestBid.amount
+    if (bidsError) {
+      logger.error('Errore recupero offerte:', bidsError)
+      return
+    }
 
-    // Aggiorna budget del vincitore
-    await supabase
-      .from('participants')
-      .update({ budget: winner.budget - winningBid })
-      .eq('id', winner.id)
+    let winner = null
+    let winningBid = 0
 
-    // Assegna il giocatore
-    await supabase
-      .from('players')
-      .update({ 
-        is_assigned: true,
-        assigned_to: winner.id 
-      })
-      .eq('id', playerId)
-  }
+    // Filtra le bid valide (amount > 0)
+    const validBids = bids?.filter(bid => bid.amount > 0) || []
 
-  // Recupera i dati del giocatore
-  const { data: player } = await supabase
-    .from('players')
-    .select('*')
-    .eq('id', playerId)
-    .single()
+    if (validBids.length > 0) {
+      const highestBid = validBids[0]
+      winner = highestBid.participants
+      winningBid = highestBid.amount
 
-  // Invia evento realtime
-  await supabase
-    .channel('auction_events')
-    .send({
-      type: 'broadcast',
-      event: 'auction_closed',
-      payload: {
-        player,
-        winner,
-        winningBid,
-        allBids: bids?.map(bid => ({
-          participant_name: bid.participants.display_name,
-          amount: bid.amount
-        })) || []
+      // Aggiorna budget del vincitore
+      await supabase
+        .from('participants')
+        .update({ budget: winner.budget - winningBid })
+        .eq('id', winner.id)
+
+      // Assegna il giocatore CON purchase_price
+      const { data: updateData, error: playerError } = await supabase
+        .from('players')
+        .update({ 
+          is_assigned: true,
+          assigned_to: winner.id,
+          purchase_price: winningBid
+        })
+        .eq('id', playerId)
+        .select()
+      
+      if (playerError) {
+        logger.error('Errore assegnazione giocatore:', playerError)
+      } else {
+        logger.info('Giocatore assegnato con successo', {
+          playerId,
+          winnerId: winner.id,
+          purchase_price: winningBid
+        })
       }
-    })
 
-  // Cancella le offerte
-  await supabase
-    .from('bids')
-    .delete()
-    .eq('player_id', playerId)
+      // Crea record bid per lo storico
+      await supabase
+        .from('bids')
+        .insert({
+          player_id: playerId,
+          participant_id: winner.id,
+          amount: winningBid,
+          auction_timer_id: activeTimer.id,
+          room_id: roomId
+        })
+    }
 
-  // NUOVO: Disattiva i timer per questo giocatore
-  await supabase
-    .from('auction_timers')
-    .update({ is_active: false })
-    .eq('player_id', playerId)
-    .eq('room_id', roomId)
-    .eq('is_active', true)
+    // Recupera i dati del giocatore aggiornati
+    const { data: player } = await supabase
+      .from('players')
+      .select('*')
+      .eq('id', playerId)
+      .single()
+
+    // Invia evento realtime
+    await supabase
+      .channel('auction_events')
+      .send({
+        type: 'broadcast',
+        event: 'auction_closed',
+        payload: {
+          player,
+          winner,
+          winningBid,
+          allBids: bids?.map(bid => ({
+            participant_name: bid.participants?.display_name,
+            amount: bid.amount
+          })) || []
+        }
+      })
+
+    // Disattiva i timer per questo giocatore
+    await supabase
+      .from('auction_timers')
+      .update({ is_active: false })
+      .eq('player_id', playerId)
+      .eq('room_id', roomId)
+      .eq('is_active', true)
+      
+    // AGGIUNTA: Passa automaticamente al turno successivo
+    await skipTurnAfterAuction(supabase, roomId)
+      
+    logger.info('Asta chiusa automaticamente', { roomId, playerId, winner: winner?.display_name, winningBid })
+    
+  } catch (error) {
+    logger.error('Errore chiusura asta automatica:', error)
+  }
+}
+
+// Funzione per passare al turno successivo dopo l'asta
+async function skipTurnAfterAuction(supabase: any, roomId: string): Promise<void> {
+  try {
+    // Recupera i dati della room e i partecipanti
+    const { data: room, error: roomError } = await supabase
+      .from('rooms')
+      .select('current_turn')
+      .eq('id', roomId)
+      .single()
+
+    if (roomError) {
+      logger.error('Errore recupero room per skip turn:', roomError)
+      throw new Error('Errore nel recupero della room')
+    }
+
+    const { data: participants, error: participantsError } = await supabase
+      .from('participants')
+      .select('*')
+      .eq('room_id', roomId)
+      .order('turn_order')
+
+    if (participantsError) {
+      logger.error('Errore recupero partecipanti per skip turn:', participantsError)
+      throw new Error('Errore nel recupero dei partecipanti')
+    }
+
+    // Calcola il prossimo turno
+    const currentTurn = room.current_turn ?? 0
+    const nextTurn = (currentTurn + 1) % participants.length
+
+    // Aggiorna il turno nel database
+    const { error: updateError } = await supabase
+      .from('rooms')
+      .update({ current_turn: nextTurn })
+      .eq('id', roomId)
+
+    if (updateError) {
+      logger.error('Errore aggiornamento turno dopo asta:', updateError)
+      throw new Error('Errore nell\'aggiornamento del turno')
+    }
+
+    // Invia broadcast del cambio turno
+    await supabase
+      .channel(`room-${roomId}`)
+      .send({
+        type: 'broadcast',
+        event: 'turn_changed',
+        payload: {
+          roomId: roomId,
+          newTurn: nextTurn,
+          previousTurn: currentTurn
+        }
+      })
+
+    logger.info(`Turno avanzato automaticamente dopo asta nella room ${roomId}: ${currentTurn} -> ${nextTurn}`)
+  } catch (error) {
+    logger.error('Errore nel passaggio automatico del turno:', error)
+    // Non lanciare l'errore per non bloccare la chiusura dell'asta
+  }
 }
 
 // Funzione per gestire timer server-side
@@ -242,8 +353,14 @@ function startServerTimer(supabase: any, endTime: number, roomId: string, player
     if (timeRemaining <= 0) {
       clearInterval(interval)
       
-      // Chiama direttamente la funzione di chiusura
-      await closeAuction(roomId, playerId)
+      logger.info('Timer scaduto, chiudendo asta', { roomId, playerId })
+      
+      // Chiama direttamente la funzione di chiusura invece di fare una fetch
+      try {
+        await closeAuction(roomId, playerId)
+        logger.info('Asta chiusa automaticamente', { roomId, playerId })
+      } catch (error) {
+        logger.error('Errore chiusura automatica asta', { error, roomId, playerId })
+      }
     }
-  }, 1000)
-}
+  }, 1000)}

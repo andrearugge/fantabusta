@@ -63,14 +63,31 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Prima dell'inserimento bid, recupera l'auction_timer_id attivo
+    const { data: activeTimer } = await supabase
+      .from('auction_timers')
+      .select('id')
+      .eq('player_id', playerId)
+      .eq('room_id', roomId)
+      .eq('is_active', true)
+      .single()
+    
+    if (!activeTimer) {
+      return NextResponse.json(
+        { error: 'Nessun timer attivo per questo giocatore' },
+        { status: 400 }
+      )
+    }
+
     // Inserisci/aggiorna offerta
     const { error: upsertError } = await supabase
       .from('bids')
       .upsert({
-        room_id: roomId,  // ← Questo campo mancava!
+        room_id: roomId,
         participant_id: participantId,
         player_id: playerId,
-        amount: amount
+        amount: amount,
+        auction_timer_id: activeTimer.id
       })
 
     if (upsertError) {
