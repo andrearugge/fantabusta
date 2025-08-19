@@ -332,7 +332,7 @@ export default function ParticipantPortal({
             <User className="h-5 w-5" />
             {localParticipant.display_name}
             {isMyTurn && (
-              <Badge className={`ml-2 bg-green-600 ${justBecameMyTurn ? 'animate-bounce' : ''}`}>
+              <Badge className="ml-2 bg-green-600">
                 È il tuo turno!
               </Badge>
             )}

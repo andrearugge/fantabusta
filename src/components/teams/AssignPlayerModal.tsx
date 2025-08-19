@@ -109,7 +109,6 @@ export default function AssignPlayerModal({
       const result = await response.json()
 
       if (response.ok) {
-        alert(result.message)
         onPlayerAssigned()
         handleClose()
       } else {

@@ -4,10 +4,11 @@ import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { SkipForward, Users } from 'lucide-react'
+import { SkipForward, CircleArrowRight } from 'lucide-react'
 import { Room, Participant } from '@/types'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import { getBaseUrl } from '@/lib/utils/url'
 
 interface TurnManagementProps {
   room: Room
@@ -23,17 +24,15 @@ interface ParticipantCardProps {
   roomId: string
   playersCount: number
   totalSpent: number
+  room: Room
 }
 
-function ParticipantCard({ participant, currentTurn, roomId, playersCount, totalSpent }: ParticipantCardProps) {
-  const isCurrentTurn = participant.turn_order === currentTurn
-  
+function ParticipantCard({ participant, currentTurn, totalSpent, room }: ParticipantCardProps) {
   return (
-    <Card className={`py-3 ${
-      isCurrentTurn 
-        ? 'ring-1 ring-blue-500 bg-blue-50 border-blue-200' 
-        : ''
-    }`}>
+    <Card className={`${participant.turn_order === currentTurn
+      ? 'border-2 border-blue-500'
+      : ''
+      }`}>
       <CardHeader className="">
         <div className="flex items-center justify-between">
           <CardTitle className="text-sm">
@@ -43,21 +42,31 @@ function ParticipantCard({ participant, currentTurn, roomId, playersCount, total
         <CardDescription className="flex items-center justify-between">
           <span className="font-medium text-green-600">
             <Badge variant="outline">
-                  {totalSpent} / {participant.budget}M
-                </Badge>
+              {totalSpent} / {room.budget_default}M
+            </Badge>
           </span>
         </CardDescription>
       </CardHeader>
+      <CardContent>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => window.open(`${getBaseUrl()}/p/${participant.join_url}`, '_blank')}
+          className="w-full"
+        >
+          Pagina asta <CircleArrowRight className="h-4 w-4" />
+        </Button>
+      </CardContent>
     </Card>
   )
 }
 
-export default function TurnManagement({ 
-  room, 
-  participants, 
-  currentTurn, 
+export default function TurnManagement({
+  room,
+  participants,
+  currentTurn,
   isAuctionActive,
-  onTurnSkipped 
+  onTurnSkipped
 }: TurnManagementProps) {
   const [participantStats, setParticipantStats] = useState<Record<string, { playersCount: number; totalSpent: number }>>({})
   const [isSkipping, setIsSkipping] = useState(false)
@@ -67,7 +76,7 @@ export default function TurnManagement({
   useEffect(() => {
     const fetchParticipantStats = async () => {
       const stats: Record<string, { playersCount: number; totalSpent: number }> = {}
-      
+
       for (const participant of participants) {
         const { data: players } = await supabase
           .from('players')
@@ -78,10 +87,10 @@ export default function TurnManagement({
 
         const playersCount = players?.length || 0
         const totalSpent = players?.reduce((sum, player) => sum + (player.purchase_price || 0), 0) || 0
-        
+
         stats[participant.id] = { playersCount, totalSpent }
       }
-      
+
       setParticipantStats(stats)
     }
 
@@ -107,9 +116,9 @@ export default function TurnManagement({
 
   const skipTurn = async () => {
     if (isSkipping) return
-    
+
     setIsSkipping(true)
-    
+
     try {
       const response = await fetch('/api/rooms/skip-turn', {
         method: 'POST',
@@ -128,7 +137,7 @@ export default function TurnManagement({
 
       const result = await response.json()
       console.log('Turno saltato con successo:', result)
-      
+
       onTurnSkipped?.()
     } catch (error) {
       console.error('Errore nel saltare il turno:', error)
@@ -140,25 +149,26 @@ export default function TurnManagement({
 
   return (
     <div className="space-y-2">
-      {/* Header Squadre */}
-      <div className="grid grid-cols-2 gap-4">
-        <div className="col-span-1">
-          <div className="text-lg font-bold flex items-center gap-2">
-            <Users className="h-5 w-5" /> Turni
-          </div>
+
+      {/* Header */}
+      <div className="flex space-y-1 flex-col lg:flex-row lg:justify-between lg:items-center">
+        <div>
+          <p className="text-xl font-bold text-black">Turni</p>
+        </div>
+        <div className="flex gap-2">
+          <Button
+            onClick={skipTurn}
+            variant="outline"
+            disabled={isAuctionActive || isSkipping}
+          >
+            <SkipForward className="h-4 w-4 mr-1" />
+            {isSkipping ? 'Saltando...' : 'Salta Turno'}
+          </Button>
         </div>
       </div>
 
       {/* Pulsante Salta Turno */}
-      <Button
-        onClick={skipTurn}
-        variant="outline"
-        className="w-full"
-        disabled={isAuctionActive || isSkipping}
-      >
-        <SkipForward className="h-4 w-4 mr-1" />
-        {isSkipping ? 'Saltando...' : 'Salta Turno'}
-      </Button>
+
 
       {/* Lista Partecipanti */}
       <div className="grid gap-2 lg:grid-cols-8 grid-cols-2">
@@ -172,6 +182,7 @@ export default function TurnManagement({
               roomId={room.id}
               playersCount={stats.playersCount}
               totalSpent={stats.totalSpent}
+              room={room}
             />
           )
         })}
