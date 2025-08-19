@@ -29,7 +29,7 @@ export default async function TeamsPage({ params }: TeamsPageProps) {
     .from('participants')
     .select('*')
     .eq('room_id', roomData.id)
-    .order('display_name')
+    .order('turn_order')
 
   // Recupera calciatori assegnati con partecipanti
   const { data: assignedPlayers } = await supabase

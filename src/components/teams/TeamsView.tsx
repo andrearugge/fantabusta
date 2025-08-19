@@ -39,7 +39,7 @@ export default function TeamsView({
         .from('participants')
         .select('*')
         .eq('room_id', room.id)
-        .order('display_name')
+        .order('turn_order')
 
       if (updatedParticipants) {
         setLocalParticipants(updatedParticipants)
